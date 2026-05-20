@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Global settings
 # ---------------------------------------------------------------------------
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
@@ -71,7 +71,7 @@ CHANNELS = [
 
 
 def _validate_config() -> None:
-    base = [k for k in ("TELEGRAM_TOKEN", "YOUTUBE_API_KEY") if not os.getenv(k)]
+    base = [k for k in ("TELEGRAM_BOT_TOKEN", "YOUTUBE_API_KEY") if not os.getenv(k)]
     channel_vars = [
         var
         for name in ("ANDREY", "BAYBA")
@@ -220,7 +220,7 @@ async def post_new_videos(channel: dict) -> None:
     sent_videos: dict = load_json(sent_videos_file)
     pinned_msgs: dict = load_json(pinned_msgs_file)
 
-    bot = Bot(token=TELEGRAM_TOKEN)
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
     videos = get_playlist_videos(playlist_id)
     new_videos = [v for v in videos if v["id"] not in sent_videos]
 
