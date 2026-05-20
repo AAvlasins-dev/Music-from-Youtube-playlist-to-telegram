@@ -195,7 +195,7 @@ def get_playlist_videos(playlist_id: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 @with_retry()
 async def _send_message(bot: Bot, chat_id: str, text: str):
-    return await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+    return await bot.send_message(chat_id=chat_id, text=text)
 
 
 @with_retry()
