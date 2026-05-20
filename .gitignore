@@ -5,6 +5,9 @@
 sent_videos.json
 pinned_msgs.json
 
+# Docker volume data directory
+data/
+
 # Python
 __pycache__/
 *.py[cod]

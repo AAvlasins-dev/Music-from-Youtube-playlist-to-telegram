@@ -1,124 +1,244 @@
-import os
+import asyncio
 import json
 import logging
-from datetime import datetime
+import logging.handlers
+import os
+import time
+from datetime import datetime, timezone
+
 from dotenv import load_dotenv
-from telegram import Bot, error as tg_error
-from telegram.ext import ApplicationBuilder
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from telegram import Bot
+from telegram import error as tg_error
 
 load_dotenv()
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
+# ---------------------------------------------------------------------------
+# Logging: console + rotating file
+# ---------------------------------------------------------------------------
+LOG_FILE = os.getenv("LOG_FILE", "bot.log")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+_formatter = logging.Formatter(
+    fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+_file_handler = logging.handlers.RotatingFileHandler(
+    LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+)
+_file_handler.setFormatter(_formatter)
+
+_console_handler = logging.StreamHandler()
+_console_handler.setFormatter(_formatter)
+
+logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO), handlers=[_file_handler, _console_handler])
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 YOUTUBE_PLAYLIST_ID = os.getenv("YOUTUBE_PLAYLIST_ID")
 
-SENT_VIDEOS_FILE = "sent_videos.json"
-PINNED_MSGS_FILE = "pinned_msgs.json"
+SENT_VIDEOS_FILE = os.getenv("SENT_VIDEOS_FILE", "sent_videos.json")
+PINNED_MSGS_FILE = os.getenv("PINNED_MSGS_FILE", "pinned_msgs.json")
+
+RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
+RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))  # seconds between retries
+POST_DELAY = float(os.getenv("POST_DELAY", "1"))     # seconds between posts
 
 
-def load_json(path: str) -> dict | list:
+def _validate_config() -> None:
+    missing = [k for k in ("TELEGRAM_TOKEN", "CHANNEL_ID", "YOUTUBE_API_KEY", "YOUTUBE_PLAYLIST_ID")
+               if not os.getenv(k)]
+    if missing:
+        raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+
+
+# ---------------------------------------------------------------------------
+# JSON helpers
+# ---------------------------------------------------------------------------
+def load_json(path: str) -> dict:
     if not os.path.exists(path):
+        logger.debug("State file not found, starting fresh: %s", path)
         return {}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def save_json(path: str, data: dict | list) -> None:
+def save_json(path: str, data: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    logger.debug("State saved: %s", path)
 
 
-def get_playlist_videos(playlist_id: str) -> list[dict]:
-    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-    videos = []
-    next_page_token = None
+# ---------------------------------------------------------------------------
+# Retry decorator
+# ---------------------------------------------------------------------------
+def with_retry(attempts: int = RETRY_ATTEMPTS, delay: float = RETRY_DELAY):
+    def decorator(func):
+        async def async_wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    logger.warning(
+                        "Attempt %d/%d failed for %s: %s",
+                        attempt, attempts, func.__name__, exc,
+                    )
+                    if attempt < attempts:
+                        await asyncio.sleep(delay * attempt)
+            logger.error("All %d attempts exhausted for %s", attempts, func.__name__)
+            raise last_exc
 
-    while True:
-        request = youtube.playlistItems().list(
+        def sync_wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    logger.warning(
+                        "Attempt %d/%d failed for %s: %s",
+                        attempt, attempts, func.__name__, exc,
+                    )
+                    if attempt < attempts:
+                        time.sleep(delay * attempt)
+            logger.error("All %d attempts exhausted for %s", attempts, func.__name__)
+            raise last_exc
+
+        import inspect
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
+    return decorator
+
+
+# ---------------------------------------------------------------------------
+# YouTube
+# ---------------------------------------------------------------------------
+@with_retry()
+def _fetch_page(youtube, playlist_id: str, page_token: str | None) -> dict:
+    return (
+        youtube.playlistItems()
+        .list(
             part="snippet,contentDetails",
             playlistId=playlist_id,
             maxResults=50,
-            pageToken=next_page_token,
+            pageToken=page_token,
         )
-        response = request.execute()
+        .execute()
+    )
+
+
+def get_playlist_videos(playlist_id: str) -> list[dict]:
+    logger.info("Fetching playlist: %s", playlist_id)
+    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+    videos: list[dict] = []
+    next_page_token = None
+    page = 0
+
+    while True:
+        page += 1
+        try:
+            response = _fetch_page(youtube, playlist_id, next_page_token)
+        except HttpError as e:
+            logger.error("YouTube API error on page %d: %s", page, e)
+            break
 
         for item in response.get("items", []):
             video_id = item["contentDetails"]["videoId"]
             title = item["snippet"]["title"]
             published_at = item["snippet"]["publishedAt"]
-            videos.append(
-                {"id": video_id, "title": title, "published_at": published_at}
-            )
+            videos.append({"id": video_id, "title": title, "published_at": published_at})
 
         next_page_token = response.get("nextPageToken")
+        logger.debug("Page %d fetched, total so far: %d", page, len(videos))
         if not next_page_token:
             break
 
+    logger.info("Playlist fetched: %d videos total", len(videos))
     return videos
 
 
+# ---------------------------------------------------------------------------
+# Telegram
+# ---------------------------------------------------------------------------
+@with_retry()
+async def _send_message(bot: Bot, chat_id: str, text: str):
+    return await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+
+
+@with_retry()
+async def _pin_message(bot: Bot, chat_id: str, message_id: int) -> None:
+    await bot.pin_chat_message(chat_id=chat_id, message_id=message_id, disable_notification=True)
+
+
+@with_retry()
+async def _unpin_message(bot: Bot, chat_id: str, message_id: int) -> None:
+    await bot.unpin_chat_message(chat_id=chat_id, message_id=message_id)
+
+
 async def post_new_videos() -> None:
+    _validate_config()
+
     sent_videos: dict = load_json(SENT_VIDEOS_FILE)
     pinned_msgs: dict = load_json(PINNED_MSGS_FILE)
 
     bot = Bot(token=TELEGRAM_TOKEN)
     videos = get_playlist_videos(YOUTUBE_PLAYLIST_ID)
-
     new_videos = [v for v in videos if v["id"] not in sent_videos]
+
     if not new_videos:
         logger.info("No new videos to post.")
         return
+
+    logger.info("%d new video(s) to post.", len(new_videos))
+    posted = 0
 
     for video in new_videos:
         url = f"https://www.youtube.com/watch?v={video['id']}"
         text = f"🎵 *{video['title']}*\n\n{url}"
 
         try:
-            message = await bot.send_message(
-                chat_id=CHANNEL_ID,
-                text=text,
-                parse_mode="Markdown",
-            )
+            message = await _send_message(bot, CHANNEL_ID, text)
             sent_videos[video["id"]] = {
                 "title": video["title"],
                 "message_id": message.message_id,
-                "posted_at": datetime.utcnow().isoformat(),
+                "posted_at": datetime.now(timezone.utc).isoformat(),
             }
-            logger.info("Posted: %s", video["title"])
+            logger.info("[%d/%d] Posted: %s", posted + 1, len(new_videos), video["title"])
 
-            # pin the latest message
-            if pinned_msgs.get("last_message_id"):
+            prev_id = pinned_msgs.get("last_message_id")
+            if prev_id:
                 try:
-                    await bot.unpin_chat_message(
-                        chat_id=CHANNEL_ID,
-                        message_id=pinned_msgs["last_message_id"],
-                    )
+                    await _unpin_message(bot, CHANNEL_ID, prev_id)
                 except tg_error.TelegramError as e:
-                    logger.warning("Could not unpin previous message: %s", e)
+                    logger.warning("Could not unpin message %s: %s", prev_id, e)
 
-            await bot.pin_chat_message(
-                chat_id=CHANNEL_ID,
-                message_id=message.message_id,
-                disable_notification=True,
-            )
+            await _pin_message(bot, CHANNEL_ID, message.message_id)
             pinned_msgs["last_message_id"] = message.message_id
+            posted += 1
 
         except tg_error.TelegramError as e:
-            logger.error("Failed to post %s: %s", video["id"], e)
+            logger.error("Failed to post video %s (%s): %s", video["id"], video["title"], e)
+
+        if posted < len(new_videos):
+            await asyncio.sleep(POST_DELAY)
 
     save_json(SENT_VIDEOS_FILE, sent_videos)
     save_json(PINNED_MSGS_FILE, pinned_msgs)
+    logger.info("Done. Posted %d/%d video(s).", posted, len(new_videos))
 
 
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    import asyncio
-
+    logger.info("=== space-music-hub bot starting ===")
     asyncio.run(post_new_videos())
+    logger.info("=== bot run complete ===")

@@ -1,0 +1,9 @@
+services:
+  bot:
+    build: .
+    container_name: space-music-hub
+    restart: "no"            # run once; use cron / Task Scheduler to schedule
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data     # persists sent_videos.json, pinned_msgs.json, bot.log
