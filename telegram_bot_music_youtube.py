@@ -236,7 +236,7 @@ async def post_new_videos(channel: dict) -> None:
         text = f"🎵 *{video['title']}*\n\n{url}"
 
         try:
-            message = await _send_message(bot, channel_id, text)
+            message = await _send_message(bot, f"@{channel_id}", text)
             sent_videos[video["id"]] = {
                 "title": video["title"],
                 "message_id": message.message_id,
