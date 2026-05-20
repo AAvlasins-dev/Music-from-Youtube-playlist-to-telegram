@@ -33,28 +33,52 @@ _file_handler.setFormatter(_formatter)
 _console_handler = logging.StreamHandler()
 _console_handler.setFormatter(_formatter)
 
-logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO), handlers=[_file_handler, _console_handler])
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    handlers=[_file_handler, _console_handler],
+)
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Config
+# Global settings
 # ---------------------------------------------------------------------------
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-YOUTUBE_PLAYLIST_ID = os.getenv("YOUTUBE_PLAYLIST_ID")
-
-SENT_VIDEOS_FILE = os.getenv("SENT_VIDEOS_FILE", "sent_videos.json")
-PINNED_MSGS_FILE = os.getenv("PINNED_MSGS_FILE", "pinned_msgs.json")
 
 RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
-RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))  # seconds between retries
-POST_DELAY = float(os.getenv("POST_DELAY", "1"))     # seconds between posts
+RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))
+POST_DELAY = float(os.getenv("POST_DELAY", "1"))
+
+# ---------------------------------------------------------------------------
+# Channel configs: one entry per (playlist → channel) pair
+# ---------------------------------------------------------------------------
+CHANNELS = [
+    {
+        "name": "andrey",
+        "playlist_id": os.getenv("PLAYLIST_ANDREY"),
+        "channel_id": os.getenv("TELEGRAM_CHANNEL_ANDREY"),
+        "sent_videos_file": "sent_videos_andrey.json",
+        "pinned_msgs_file": "pinned_msgs_andrey.json",
+    },
+    {
+        "name": "bayba",
+        "playlist_id": os.getenv("PLAYLIST_BAYBA"),
+        "channel_id": os.getenv("TELEGRAM_CHANNEL_BAYBA"),
+        "sent_videos_file": "sent_videos_bayba.json",
+        "pinned_msgs_file": "pinned_msgs_bayba.json",
+    },
+]
 
 
 def _validate_config() -> None:
-    missing = [k for k in ("TELEGRAM_TOKEN", "CHANNEL_ID", "YOUTUBE_API_KEY", "YOUTUBE_PLAYLIST_ID")
-               if not os.getenv(k)]
+    base = [k for k in ("TELEGRAM_TOKEN", "YOUTUBE_API_KEY") if not os.getenv(k)]
+    channel_vars = [
+        var
+        for name in ("ANDREY", "BAYBA")
+        for var in (f"PLAYLIST_{name}", f"TELEGRAM_CHANNEL_{name}")
+        if not os.getenv(var)
+    ]
+    missing = base + channel_vars
     if missing:
         raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
 
@@ -81,6 +105,8 @@ def save_json(path: str, data: dict) -> None:
 # ---------------------------------------------------------------------------
 def with_retry(attempts: int = RETRY_ATTEMPTS, delay: float = RETRY_DELAY):
     def decorator(func):
+        import inspect
+
         async def async_wrapper(*args, **kwargs):
             last_exc = None
             for attempt in range(1, attempts + 1):
@@ -113,7 +139,6 @@ def with_retry(attempts: int = RETRY_ATTEMPTS, delay: float = RETRY_DELAY):
             logger.error("All %d attempts exhausted for %s", attempts, func.__name__)
             raise last_exc
 
-        import inspect
         return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
     return decorator
 
@@ -183,21 +208,27 @@ async def _unpin_message(bot: Bot, chat_id: str, message_id: int) -> None:
     await bot.unpin_chat_message(chat_id=chat_id, message_id=message_id)
 
 
-async def post_new_videos() -> None:
-    _validate_config()
+async def post_new_videos(channel: dict) -> None:
+    name = channel["name"]
+    playlist_id = channel["playlist_id"]
+    channel_id = channel["channel_id"]
+    sent_videos_file = channel["sent_videos_file"]
+    pinned_msgs_file = channel["pinned_msgs_file"]
 
-    sent_videos: dict = load_json(SENT_VIDEOS_FILE)
-    pinned_msgs: dict = load_json(PINNED_MSGS_FILE)
+    logger.info("--- Processing channel: %s ---", name)
+
+    sent_videos: dict = load_json(sent_videos_file)
+    pinned_msgs: dict = load_json(pinned_msgs_file)
 
     bot = Bot(token=TELEGRAM_TOKEN)
-    videos = get_playlist_videos(YOUTUBE_PLAYLIST_ID)
+    videos = get_playlist_videos(playlist_id)
     new_videos = [v for v in videos if v["id"] not in sent_videos]
 
     if not new_videos:
-        logger.info("No new videos to post.")
+        logger.info("[%s] No new videos to post.", name)
         return
 
-    logger.info("%d new video(s) to post.", len(new_videos))
+    logger.info("[%s] %d new video(s) to post.", name, len(new_videos))
     posted = 0
 
     for video in new_videos:
@@ -205,40 +236,46 @@ async def post_new_videos() -> None:
         text = f"🎵 *{video['title']}*\n\n{url}"
 
         try:
-            message = await _send_message(bot, CHANNEL_ID, text)
+            message = await _send_message(bot, channel_id, text)
             sent_videos[video["id"]] = {
                 "title": video["title"],
                 "message_id": message.message_id,
                 "posted_at": datetime.now(timezone.utc).isoformat(),
             }
-            logger.info("[%d/%d] Posted: %s", posted + 1, len(new_videos), video["title"])
+            logger.info("[%s] [%d/%d] Posted: %s", name, posted + 1, len(new_videos), video["title"])
 
             prev_id = pinned_msgs.get("last_message_id")
             if prev_id:
                 try:
-                    await _unpin_message(bot, CHANNEL_ID, prev_id)
+                    await _unpin_message(bot, channel_id, prev_id)
                 except tg_error.TelegramError as e:
-                    logger.warning("Could not unpin message %s: %s", prev_id, e)
+                    logger.warning("[%s] Could not unpin message %s: %s", name, prev_id, e)
 
-            await _pin_message(bot, CHANNEL_ID, message.message_id)
+            await _pin_message(bot, channel_id, message.message_id)
             pinned_msgs["last_message_id"] = message.message_id
             posted += 1
 
         except tg_error.TelegramError as e:
-            logger.error("Failed to post video %s (%s): %s", video["id"], video["title"], e)
+            logger.error("[%s] Failed to post %s (%s): %s", name, video["id"], video["title"], e)
 
         if posted < len(new_videos):
             await asyncio.sleep(POST_DELAY)
 
-    save_json(SENT_VIDEOS_FILE, sent_videos)
-    save_json(PINNED_MSGS_FILE, pinned_msgs)
-    logger.info("Done. Posted %d/%d video(s).", posted, len(new_videos))
+    save_json(sent_videos_file, sent_videos)
+    save_json(pinned_msgs_file, pinned_msgs)
+    logger.info("[%s] Done. Posted %d/%d video(s).", name, posted, len(new_videos))
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+async def main() -> None:
+    _validate_config()
+    for channel in CHANNELS:
+        await post_new_videos(channel)
+
+
 if __name__ == "__main__":
     logger.info("=== space-music-hub bot starting ===")
-    asyncio.run(post_new_videos())
+    asyncio.run(main())
     logger.info("=== bot run complete ===")

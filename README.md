@@ -18,7 +18,7 @@
 
 ## 🇬🇧 English
 
-A Telegram bot that automatically publishes new videos from a YouTube playlist to a Telegram channel and pins the latest post.
+A Telegram bot that automatically publishes new videos from two YouTube playlists to two separate Telegram channels and pins the latest post in each.
 
 ### ✨ Features
 
@@ -110,16 +110,16 @@ Copy `.env.example` to `.env` and fill in the values:
 | Variable | Required | Description |
 |---|---|---|
 | `TELEGRAM_TOKEN` | ✅ | Bot token from [@BotFather](https://t.me/BotFather) |
-| `CHANNEL_ID` | ✅ | Channel username (`@channel`) or numeric chat ID |
 | `YOUTUBE_API_KEY` | ✅ | API key from [Google Cloud Console](https://console.cloud.google.com/) |
-| `YOUTUBE_PLAYLIST_ID` | ✅ | YouTube playlist ID (from the playlist URL) |
+| `PLAYLIST_ANDREY` | ✅ | YouTube playlist ID for Andrey's channel |
+| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Telegram channel for Andrey (`@channel` or numeric chat ID) |
+| `PLAYLIST_BAYBA` | ✅ | YouTube playlist ID for Bayba's channel |
+| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Telegram channel for Bayba (`@channel` or numeric chat ID) |
 | `RETRY_ATTEMPTS` | ➖ | Number of retry attempts on API errors (default: `3`) |
 | `RETRY_DELAY` | ➖ | Base delay in seconds between retries (default: `5`) |
 | `POST_DELAY` | ➖ | Delay in seconds between consecutive posts (default: `1`) |
 | `LOG_LEVEL` | ➖ | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` (default: `INFO`) |
 | `LOG_FILE` | ➖ | Path to log file (default: `bot.log`) |
-| `SENT_VIDEOS_FILE` | ➖ | Path to sent-videos state file (default: `sent_videos.json`) |
-| `PINNED_MSGS_FILE` | ➖ | Path to pinned-message state file (default: `pinned_msgs.json`) |
 
 **Getting a YouTube Playlist ID**
 
@@ -146,8 +146,10 @@ space-music-hub/
 ├── docker-compose.yml              # Docker Compose config
 ├── .env.example                    # Environment variables template
 ├── .gitignore                      # Git ignore rules
-├── sent_videos.json                # Runtime state — posted videos (auto-created)
-├── pinned_msgs.json                # Runtime state — pinned message ID (auto-created)
+├── sent_videos_andrey.json         # Runtime state — Andrey channel posted videos (auto-created)
+├── pinned_msgs_andrey.json         # Runtime state — Andrey channel pinned msg ID (auto-created)
+├── sent_videos_bayba.json          # Runtime state — Bayba channel posted videos (auto-created)
+├── pinned_msgs_bayba.json          # Runtime state — Bayba channel pinned msg ID (auto-created)
 ├── bot.log                         # Rotating log file (auto-created)
 └── README.md
 ```
@@ -170,7 +172,7 @@ MIT — feel free to use and modify.
 
 ## 🇷🇺 Русский
 
-Telegram-бот, который автоматически публикует новые видео из YouTube-плейлиста в Telegram-канал и закрепляет последнее сообщение.
+Telegram-бот, который автоматически публикует новые видео из двух YouTube-плейлистов в два отдельных Telegram-канала и закрепляет последнее сообщение в каждом.
 
 ### ✨ Возможности
 
@@ -262,16 +264,16 @@ python telegram_bot_music_youtube.py
 | Переменная | Обязательна | Описание |
 |---|---|---|
 | `TELEGRAM_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
-| `CHANNEL_ID` | ✅ | Юзернейм канала (`@channel`) или числовой chat ID |
 | `YOUTUBE_API_KEY` | ✅ | API-ключ из [Google Cloud Console](https://console.cloud.google.com/) |
-| `YOUTUBE_PLAYLIST_ID` | ✅ | ID плейлиста YouTube (из URL плейлиста) |
+| `PLAYLIST_ANDREY` | ✅ | ID плейлиста YouTube для канала Андрея |
+| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Telegram-канал Андрея (`@channel` или числовой chat ID) |
+| `PLAYLIST_BAYBA` | ✅ | ID плейлиста YouTube для канала Байбы |
+| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Telegram-канал Байбы (`@channel` или числовой chat ID) |
 | `RETRY_ATTEMPTS` | ➖ | Количество попыток при ошибках API (по умолчанию: `3`) |
 | `RETRY_DELAY` | ➖ | Базовая задержка в секундах между попытками (по умолчанию: `5`) |
 | `POST_DELAY` | ➖ | Задержка в секундах между публикациями (по умолчанию: `1`) |
 | `LOG_LEVEL` | ➖ | Уровень логирования: `DEBUG`, `INFO`, `WARNING`, `ERROR` (по умолчанию: `INFO`) |
 | `LOG_FILE` | ➖ | Путь к файлу логов (по умолчанию: `bot.log`) |
-| `SENT_VIDEOS_FILE` | ➖ | Путь к файлу состояния отправленных видео (по умолчанию: `sent_videos.json`) |
-| `PINNED_MSGS_FILE` | ➖ | Путь к файлу состояния закреплённых сообщений (по умолчанию: `pinned_msgs.json`) |
 
 **Как найти ID плейлиста YouTube**
 
@@ -298,8 +300,10 @@ space-music-hub/
 ├── docker-compose.yml              # Конфигурация Docker Compose
 ├── .env.example                    # Шаблон переменных окружения
 ├── .gitignore                      # Правила игнорирования Git
-├── sent_videos.json                # Состояние — опубликованные видео (создаётся автоматически)
-├── pinned_msgs.json                # Состояние — ID закреплённого сообщения (создаётся автоматически)
+├── sent_videos_andrey.json         # Состояние — опубликованные видео канала Андрея (авто)
+├── pinned_msgs_andrey.json         # Состояние — ID закреплённого сообщения Андрея (авто)
+├── sent_videos_bayba.json          # Состояние — опубликованные видео канала Байбы (авто)
+├── pinned_msgs_bayba.json          # Состояние — ID закреплённого сообщения Байбы (авто)
 ├── bot.log                         # Ротируемый файл логов (создаётся автоматически)
 └── README.md
 ```
@@ -322,7 +326,7 @@ MIT — используй и модифицируй свободно.
 
 ## 🇱🇻 Latviešu
 
-Telegram bots, kas automātiski publicē jaunus videoklipus no YouTube atskaņošanas saraksta Telegram kanālā un piesprauž jaunāko ziņojumu.
+Telegram bots, kas automātiski publicē jaunus videoklipus no diviem YouTube atskaņošanas sarakstiem divos atsevišķos Telegram kanālos un piesprauž jaunāko ziņojumu katrā no tiem.
 
 ### ✨ Iespējas
 
@@ -414,16 +418,16 @@ Kopē `.env.example` uz `.env` un aizpildi vērtības:
 | Mainīgais | Nepieciešams | Apraksts |
 |---|---|---|
 | `TELEGRAM_TOKEN` | ✅ | Bota marķieris no [@BotFather](https://t.me/BotFather) |
-| `CHANNEL_ID` | ✅ | Kanāla lietotājvārds (`@channel`) vai ciparu tērzēšanas ID |
 | `YOUTUBE_API_KEY` | ✅ | API atslēga no [Google Cloud Console](https://console.cloud.google.com/) |
-| `YOUTUBE_PLAYLIST_ID` | ✅ | YouTube atskaņošanas saraksta ID (no saraksta URL) |
+| `PLAYLIST_ANDREY` | ✅ | YouTube atskaņošanas saraksta ID Andreja kanālam |
+| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Telegram kanāls Andrejam (`@channel` vai ciparu ID) |
+| `PLAYLIST_BAYBA` | ✅ | YouTube atskaņošanas saraksta ID Baibas kanālam |
+| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Telegram kanāls Baibai (`@channel` vai ciparu ID) |
 | `RETRY_ATTEMPTS` | ➖ | Atkārtošanas mēģinājumu skaits API kļūdu gadījumā (noklusējums: `3`) |
 | `RETRY_DELAY` | ➖ | Bāzes aizkave sekundēs starp mēģinājumiem (noklusējums: `5`) |
 | `POST_DELAY` | ➖ | Aizkave sekundēs starp secīgām publikācijām (noklusējums: `1`) |
 | `LOG_LEVEL` | ➖ | Reģistrēšanas līmenis: `DEBUG`, `INFO`, `WARNING`, `ERROR` (noklusējums: `INFO`) |
 | `LOG_FILE` | ➖ | Ceļš uz žurnālfailu (noklusējums: `bot.log`) |
-| `SENT_VIDEOS_FILE` | ➖ | Ceļš uz nosūtīto videoklipu stāvokļa failu (noklusējums: `sent_videos.json`) |
-| `PINNED_MSGS_FILE` | ➖ | Ceļš uz piesprausto ziņojumu stāvokļa failu (noklusējums: `pinned_msgs.json`) |
 
 **Kā atrast YouTube atskaņošanas saraksta ID**
 
@@ -450,8 +454,10 @@ space-music-hub/
 ├── docker-compose.yml              # Docker Compose konfigurācija
 ├── .env.example                    # Vides mainīgo veidne
 ├── .gitignore                      # Git ignorēšanas noteikumi
-├── sent_videos.json                # Stāvoklis — publicētie videoklipi (izveidots automātiski)
-├── pinned_msgs.json                # Stāvoklis — piesprausto ziņojumu ID (izveidots automātiski)
+├── sent_videos_andrey.json         # Stāvoklis — Andreja kanāla publicētie video (automātiski)
+├── pinned_msgs_andrey.json         # Stāvoklis — Andreja kanāla piesprausts ziņ. ID (automātiski)
+├── sent_videos_bayba.json          # Stāvoklis — Baibas kanāla publicētie video (automātiski)
+├── pinned_msgs_bayba.json          # Stāvoklis — Baibas kanāla piesprausts ziņ. ID (automātiski)
 ├── bot.log                         # Rotējošs žurnālfails (izveidots automātiski)
 └── README.md
 ```

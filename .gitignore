@@ -2,8 +2,8 @@
 .env
 
 # Bot state
-sent_videos.json
-pinned_msgs.json
+sent_videos*.json
+pinned_msgs*.json
 
 # Docker volume data directory
 data/
