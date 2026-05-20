@@ -4,11 +4,11 @@ import logging
 import logging.handlers
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
+import yt_dlp
 from dotenv import load_dotenv
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from telegram import Bot
 from telegram import error as tg_error
 
@@ -24,12 +24,10 @@ _formatter = logging.Formatter(
     fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-
 _file_handler = logging.handlers.RotatingFileHandler(
     LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
 )
 _file_handler.setFormatter(_formatter)
-
 _console_handler = logging.StreamHandler()
 _console_handler.setFormatter(_formatter)
 
@@ -40,14 +38,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Global settings
+# Config
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "downloads")
 
 RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
 RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))
-POST_DELAY = float(os.getenv("POST_DELAY", "1"))
+POST_DELAY = float(os.getenv("POST_DELAY", "2"))
 
 # ---------------------------------------------------------------------------
 # Channel configs: one entry per (playlist → channel) pair
@@ -69,9 +67,11 @@ CHANNELS = [
     },
 ]
 
+executor = ThreadPoolExecutor(max_workers=2)
+
 
 def _validate_config() -> None:
-    base = [k for k in ("TELEGRAM_BOT_TOKEN", "YOUTUBE_API_KEY") if not os.getenv(k)]
+    base = [k for k in ("TELEGRAM_BOT_TOKEN",) if not os.getenv(k)]
     channel_vars = [
         var
         for name in ("ANDREY", "BAYBA")
@@ -101,7 +101,7 @@ def save_json(path: str, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Retry decorator
+# Retry decorator (supports both sync and async functions)
 # ---------------------------------------------------------------------------
 def with_retry(attempts: int = RETRY_ATTEMPTS, delay: float = RETRY_DELAY):
     def decorator(func):
@@ -144,63 +144,79 @@ def with_retry(attempts: int = RETRY_ATTEMPTS, delay: float = RETRY_DELAY):
 
 
 # ---------------------------------------------------------------------------
-# YouTube
+# yt-dlp: playlist info
 # ---------------------------------------------------------------------------
 @with_retry()
-def _fetch_page(youtube, playlist_id: str, page_token: str | None) -> dict:
-    return (
-        youtube.playlistItems()
-        .list(
-            part="snippet,contentDetails",
-            playlistId=playlist_id,
-            maxResults=50,
-            pageToken=page_token,
-        )
-        .execute()
-    )
-
-
-def get_playlist_videos(playlist_id: str) -> list[dict]:
+def _get_playlist_videos(playlist_id: str) -> list[dict]:
+    url = f"https://www.youtube.com/playlist?list={playlist_id}"
     logger.info("Fetching playlist: %s", playlist_id)
-    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-    videos: list[dict] = []
-    next_page_token = None
-    page = 0
-
-    while True:
-        page += 1
-        try:
-            response = _fetch_page(youtube, playlist_id, next_page_token)
-        except HttpError as e:
-            logger.error("YouTube API error on page %d: %s", page, e)
-            break
-
-        for item in response.get("items", []):
-            video_id = item["contentDetails"]["videoId"]
-            title = item["snippet"]["title"]
-            published_at = item["snippet"]["publishedAt"]
-            videos.append({"id": video_id, "title": title, "published_at": published_at})
-
-        next_page_token = response.get("nextPageToken")
-        logger.debug("Page %d fetched, total so far: %d", page, len(videos))
-        if not next_page_token:
-            break
-
+    ydl_opts = {
+        "quiet": True,
+        "extract_flat": True,
+        "no_warnings": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    videos = [
+        {
+            "id": e["id"],
+            "title": e.get("title", "Unknown"),
+            "duration": e.get("duration"),
+        }
+        for e in info.get("entries", [])
+        if e and e.get("id")
+    ]
     logger.info("Playlist fetched: %d videos total", len(videos))
     return videos
+
+
+# ---------------------------------------------------------------------------
+# yt-dlp: audio download → MP3 via ffmpeg
+# ---------------------------------------------------------------------------
+@with_retry()
+def _download_audio(video_id: str) -> str:
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    output_template = os.path.join(DOWNLOAD_DIR, f"{video_id}.%(ext)s")
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "192",
+            }
+        ],
+        "outtmpl": output_template,
+        "quiet": True,
+        "no_warnings": True,
+    }
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+    mp3_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
+    if not os.path.exists(mp3_path):
+        raise FileNotFoundError(f"MP3 not found after download: {mp3_path}")
+    return mp3_path
 
 
 # ---------------------------------------------------------------------------
 # Telegram
 # ---------------------------------------------------------------------------
 @with_retry()
-async def _send_message(bot: Bot, chat_id: str, text: str):
-    return await bot.send_message(chat_id=chat_id, text=text)
+async def _send_audio(bot: Bot, chat_id: str, mp3_path: str, title: str):
+    with open(mp3_path, "rb") as audio_file:
+        return await bot.send_audio(
+            chat_id=chat_id,
+            audio=audio_file,
+            title=title,
+        )
 
 
 @with_retry()
 async def _pin_message(bot: Bot, chat_id: str, message_id: int) -> None:
-    await bot.pin_chat_message(chat_id=chat_id, message_id=message_id, disable_notification=True)
+    await bot.pin_chat_message(
+        chat_id=chat_id, message_id=message_id, disable_notification=True
+    )
 
 
 @with_retry()
@@ -208,20 +224,23 @@ async def _unpin_message(bot: Bot, chat_id: str, message_id: int) -> None:
     await bot.unpin_chat_message(chat_id=chat_id, message_id=message_id)
 
 
+# ---------------------------------------------------------------------------
+# Core logic
+# ---------------------------------------------------------------------------
 async def post_new_videos(channel: dict) -> None:
     name = channel["name"]
     playlist_id = channel["playlist_id"]
-    channel_id = channel["channel_id"]
+    channel_id = f"@{channel['channel_id']}"
     sent_videos_file = channel["sent_videos_file"]
     pinned_msgs_file = channel["pinned_msgs_file"]
 
     logger.info("--- Processing channel: %s ---", name)
 
+    loop = asyncio.get_event_loop()
     sent_videos: dict = load_json(sent_videos_file)
     pinned_msgs: dict = load_json(pinned_msgs_file)
 
-    bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    videos = get_playlist_videos(playlist_id)
+    videos = await loop.run_in_executor(executor, _get_playlist_videos, playlist_id)
     new_videos = [v for v in videos if v["id"] not in sent_videos]
 
     if not new_videos:
@@ -229,20 +248,26 @@ async def post_new_videos(channel: dict) -> None:
         return
 
     logger.info("[%s] %d new video(s) to post.", name, len(new_videos))
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
     posted = 0
 
-    for video in new_videos:
-        url = f"https://www.youtube.com/watch?v={video['id']}"
-        text = f"🎵 *{video['title']}*\n\n{url}"
+    for i, video in enumerate(new_videos, 1):
+        video_id = video["id"]
+        title = video["title"]
+        mp3_path = None
 
         try:
-            message = await _send_message(bot, f"@{channel_id}", text)
-            sent_videos[video["id"]] = {
-                "title": video["title"],
+            logger.info("[%s] [%d/%d] Downloading: %s", name, i, len(new_videos), title)
+            mp3_path = await loop.run_in_executor(executor, _download_audio, video_id)
+            logger.info("[%s] Downloaded: %s", name, mp3_path)
+
+            message = await _send_audio(bot, channel_id, mp3_path, title)
+            sent_videos[video_id] = {
+                "title": title,
                 "message_id": message.message_id,
                 "posted_at": datetime.now(timezone.utc).isoformat(),
             }
-            logger.info("[%s] [%d/%d] Posted: %s", name, posted + 1, len(new_videos), video["title"])
+            logger.info("[%s] [%d/%d] Posted: %s", name, i, len(new_videos), title)
 
             prev_id = pinned_msgs.get("last_message_id")
             if prev_id:
@@ -255,10 +280,15 @@ async def post_new_videos(channel: dict) -> None:
             pinned_msgs["last_message_id"] = message.message_id
             posted += 1
 
-        except tg_error.TelegramError as e:
-            logger.error("[%s] Failed to post %s (%s): %s", name, video["id"], video["title"], e)
+        except Exception as e:
+            logger.error("[%s] Failed to process %s (%s): %s", name, video_id, title, e)
 
-        if posted < len(new_videos):
+        finally:
+            if mp3_path and os.path.exists(mp3_path):
+                os.remove(mp3_path)
+                logger.debug("[%s] Cleaned up: %s", name, mp3_path)
+
+        if i < len(new_videos):
             await asyncio.sleep(POST_DELAY)
 
     save_json(sent_videos_file, sent_videos)

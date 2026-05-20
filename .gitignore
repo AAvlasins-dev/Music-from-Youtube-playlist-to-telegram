@@ -8,6 +8,9 @@ pinned_msgs*.json
 # Docker volume data directory
 data/
 
+# Downloaded audio files
+downloads/
+
 # Python
 __pycache__/
 *.py[cod]
