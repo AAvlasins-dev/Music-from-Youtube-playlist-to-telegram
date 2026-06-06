@@ -27,6 +27,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Decode YouTube cookies
+        if: ${{ secrets.YOUTUBE_COOKIES_B64 != '' }}
+        env:
+          YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
+        run: echo "$YOUTUBE_COOKIES_B64" | base64 -d > youtube_cookies.txt
+
       - name: Run bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -34,6 +40,7 @@ jobs:
           TELEGRAM_CHANNEL_ANDREY: ${{ secrets.TELEGRAM_CHANNEL_ANDREY }}
           PLAYLIST_BAYBA: ${{ secrets.PLAYLIST_BAYBA }}
           TELEGRAM_CHANNEL_BAYBA: ${{ secrets.TELEGRAM_CHANNEL_BAYBA }}
+          YOUTUBE_COOKIES_FILE: ${{ secrets.YOUTUBE_COOKIES_B64 != '' && 'youtube_cookies.txt' || '' }}
         run: python telegram_bot_music_youtube.py
 
       # State files are gitignored locally but must persist between CI runs.

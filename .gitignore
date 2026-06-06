@@ -44,6 +44,10 @@ desktop.ini
 # Logs
 *.log
 
+# YouTube cookies (contains sensitive auth tokens — never commit)
+youtube_cookies.txt
+*.cookies.txt
+
 # Bundled binaries (install ffmpeg via the OS / Docker instead)
 ffmpeg.exe
 *.exe

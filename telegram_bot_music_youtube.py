@@ -46,6 +46,7 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "downloads")
 RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
 RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))
 POST_DELAY = float(os.getenv("POST_DELAY", "2"))
+YOUTUBE_COOKIES_FILE = os.getenv("YOUTUBE_COOKIES_FILE", "")
 
 # ---------------------------------------------------------------------------
 # Channel configs: one entry per (playlist → channel) pair
@@ -159,6 +160,7 @@ def _get_playlist_videos(playlist_id: str) -> list[dict]:
         "quiet": True,
         "extract_flat": True,
         "no_warnings": True,
+        **({"cookiefile": YOUTUBE_COOKIES_FILE} if YOUTUBE_COOKIES_FILE else {}),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -194,6 +196,7 @@ def _download_audio(video_id: str) -> str:
         "outtmpl": output_template,
         "quiet": True,
         "no_warnings": True,
+        **({"cookiefile": YOUTUBE_COOKIES_FILE} if YOUTUBE_COOKIES_FILE else {}),
     }
     url = f"https://www.youtube.com/watch?v={video_id}"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
