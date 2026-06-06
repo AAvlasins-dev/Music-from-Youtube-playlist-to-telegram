@@ -32,7 +32,7 @@ jobs:
           YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
         run: |
           if [ -n "$YOUTUBE_COOKIES_B64" ]; then
-            echo "$YOUTUBE_COOKIES_B64" | base64 -d > youtube_cookies.txt
+            printf '%s' "$YOUTUBE_COOKIES_B64" | tr -d '[:space:]' | base64 -d > youtube_cookies.txt
             echo "YOUTUBE_COOKIES_FILE=youtube_cookies.txt" >> $GITHUB_ENV
           fi
 
