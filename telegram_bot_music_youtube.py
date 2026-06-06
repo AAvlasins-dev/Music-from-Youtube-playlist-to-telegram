@@ -100,6 +100,11 @@ def save_json(path: str, data: dict) -> None:
     logger.debug("State saved: %s", path)
 
 
+def filter_new_videos(videos: list[dict], sent_videos: dict) -> list[dict]:
+    """Return only the videos whose id is not already present in the sent state."""
+    return [v for v in videos if v["id"] not in sent_videos]
+
+
 # ---------------------------------------------------------------------------
 # Retry decorator (supports both sync and async functions)
 # ---------------------------------------------------------------------------
@@ -241,7 +246,7 @@ async def post_new_videos(channel: dict) -> None:
     pinned_msgs: dict = load_json(pinned_msgs_file)
 
     videos = await loop.run_in_executor(executor, _get_playlist_videos, playlist_id)
-    new_videos = [v for v in videos if v["id"] not in sent_videos]
+    new_videos = filter_new_videos(videos, sent_videos)
 
     if not new_videos:
         logger.info("[%s] No new videos to post.", name)

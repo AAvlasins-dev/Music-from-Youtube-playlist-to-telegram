@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Personal scratch backup and runtime artifacts are not part of the project.
+extend-exclude = ["*.local.bak.py", "downloads", "data"]
+
+[tool.ruff.lint]
+# pyflakes (F), pycodestyle errors (E), import sorting (I), bugbear (B)
+select = ["E", "F", "I", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

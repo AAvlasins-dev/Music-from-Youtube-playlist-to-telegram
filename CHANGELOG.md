@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.0] — 2026-06-06
+
+### Changed
+- **Rewrote the bot to download and send real MP3 files** via `yt-dlp` + `ffmpeg` instead of posting YouTube links — no YouTube Data API key required anymore
+- Playlist reading now uses `yt-dlp` flat extraction (`_get_playlist_videos`)
+- Audio is downloaded as `bestaudio` and converted to 192 kbps MP3 (`_download_audio`), sent via `bot.send_audio`, then deleted after a successful send
+- Renamed `TELEGRAM_TOKEN` → `TELEGRAM_BOT_TOKEN`
+- State is now stored per channel: `sent_videos_<name>.json` / `pinned_msgs_<name>.json`
+- `requirements.txt` now pins `yt-dlp==2025.1.15`; dropped `google-api-python-client`
+
+### Fixed
+- **CI state persistence:** the workflow committed empty un-suffixed `sent_videos.json` / `pinned_msgs.json`, so real per-channel state was never saved and every run re-posted the whole playlist. Now force-adds `sent_videos_*.json` / `pinned_msgs_*.json`
+- Removed the unused `YOUTUBE_API_KEY` secret from the workflow
+- Deleted the empty legacy `sent_videos.json` / `pinned_msgs.json` from the repo
+
+### Added
+- `tests/` with `pytest` unit tests and `ruff` linting, wired into CI
+
+---
+
 ## [1.1.0] — 2026-05-20
 
 ### Added

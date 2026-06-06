@@ -43,3 +43,20 @@ desktop.ini
 
 # Logs
 *.log
+
+# Bundled binaries (install ffmpeg via the OS / Docker instead)
+ffmpeg.exe
+*.exe
+
+# Local scratch / backups
+*.local.bak.py
+.cache
+.cache/
+.pytest_cache/
+
+# Local personal notes (not part of the project)
+Презентация и инструкция/
+Текстовый документ.txt
+
+# Local Claude Code settings
+.claude/settings.local.json

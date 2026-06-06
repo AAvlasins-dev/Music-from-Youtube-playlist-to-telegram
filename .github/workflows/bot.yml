@@ -30,7 +30,6 @@ jobs:
       - name: Run bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           PLAYLIST_ANDREY: ${{ secrets.PLAYLIST_ANDREY }}
           TELEGRAM_CHANNEL_ANDREY: ${{ secrets.TELEGRAM_CHANNEL_ANDREY }}
           PLAYLIST_BAYBA: ${{ secrets.PLAYLIST_BAYBA }}
@@ -38,15 +37,18 @@ jobs:
         run: python telegram_bot_music_youtube.py
 
       # State files are gitignored locally but must persist between CI runs.
-      # Force-add all four files so the next scheduled run knows which videos were already posted.
+      # The bot writes one pair per channel (sent_videos_<name>.json / pinned_msgs_<name>.json),
+      # so force-add the suffixed files — NOT the un-suffixed legacy names — or state is lost
+      # and every run re-posts the whole playlist.
       - name: Commit updated state
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          touch sent_videos.json pinned_msgs.json
-          git add -f sent_videos.json pinned_msgs.json
-          git diff --staged --quiet || \
-            git commit -m "chore: update bot state [skip ci]" && git push
+          git add -f sent_videos_*.json pinned_msgs_*.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update bot state [skip ci]"
+            git push
+          fi
 
       - name: Upload bot log
         if: always()
