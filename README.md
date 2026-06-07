@@ -71,23 +71,43 @@ A Telegram bot that automatically downloads audio from YouTube playlists as MP3 
 └─────────────────────────────────────────────┘
 ```
 
+### ⚠️ GitHub Actions limitation
+
+GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube identifies as datacenter traffic and blocks with a `Sign in to confirm you're not a bot` error. This means `yt-dlp` **cannot download audio** when the bot runs inside GitHub Actions.
+
+| What works on GitHub Actions | What does NOT work |
+|---|---|
+| ✅ Lint + unit tests (`ci.yml`) | ❌ Downloading audio from YouTube |
+| ✅ Scheduled trigger / workflow_dispatch | ❌ Sending MP3 files to Telegram |
+| ✅ Committing state files back to the repo | |
+
+**Recommended deployment for full functionality:** run the bot on any machine with a residential or non-datacenter IP — your own PC (Windows Task Scheduler / cron), a home server, or a VPS not hosted on Azure/AWS/GCP. The Docker and local Python options below work out of the box.
+
+> This is a known limitation of all cloud CI providers when scraping YouTube. See [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp) for cookie-based workarounds if you specifically need CI-based execution.
+
+---
+
 ### 🚀 Quick Start
 
-#### Option 1 — GitHub Actions (recommended, free)
+#### Option 1 — Local Python + Windows Task Scheduler (recommended)
 
 ```bash
-# 1. Fork or clone the repository
 git clone https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram.git
 cd Music-from-Youtube-playlist-to-telegram
-
-# 2. Add secrets in GitHub → Settings → Secrets and variables → Actions
-#    (see Configuration section below)
-
-# 3. Enable the Actions tab, then trigger manually:
-#    Actions → Run Music Bot → Run workflow
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in your credentials
+python telegram_bot_music_youtube.py
 ```
 
-The bot runs automatically every 2 days. No server needed.
+To run automatically on Windows, create a scheduled task:
+```powershell
+$action  = New-ScheduledTaskAction -Execute "python" `
+           -Argument "telegram_bot_music_youtube.py" `
+           -WorkingDirectory (Get-Location)
+$trigger = New-ScheduledTaskTrigger -Daily -DaysInterval 2 -At "10:00"
+Register-ScheduledTask -TaskName "SpaceMusicHubBot" -Action $action -Trigger $trigger
+```
 
 #### Option 2 — Docker
 
@@ -195,18 +215,43 @@ Telegram-бот, который автоматически скачивает а
 | ⚙️ Полная настройка | Всё поведение управляется через переменные окружения |
 | ☁️ Бесплатный хостинг | Расписание GitHub Actions — нулевые расходы на инфраструктуру |
 
+### ⚠️ Ограничение GitHub Actions
+
+Раннеры GitHub Actions работают на серверах **Microsoft Azure**, IP-адреса которых YouTube распознаёт как дата-центр и блокирует с ошибкой `Sign in to confirm you're not a bot`. Это значит, что `yt-dlp` **не может скачивать аудио** при запуске внутри GitHub Actions.
+
+| Что работает в GitHub Actions | Что НЕ работает |
+|---|---|
+| ✅ Линтер + юнит-тесты (`ci.yml`) | ❌ Скачивание аудио с YouTube |
+| ✅ Запуск по расписанию / вручную | ❌ Отправка MP3 в Telegram |
+| ✅ Коммит state-файлов обратно в репо | |
+
+**Рекомендуемый способ для полного функционала:** запускай бота на любой машине с домашним или не дата-центровым IP — твой ПК (Windows Task Scheduler или cron), домашний сервер, или VPS не на Azure/AWS/GCP. Варианты Docker и локального Python ниже работают без ограничений.
+
+> Это известное ограничение всех облачных CI-провайдеров при работе с YouTube. Подробнее — в [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
+
+---
+
 ### 🚀 Быстрый старт
 
-#### Вариант 1 — GitHub Actions (рекомендуется, бесплатно)
+#### Вариант 1 — Локальный Python + Windows Task Scheduler (рекомендуется)
 
 ```bash
 git clone https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram.git
 cd Music-from-Youtube-playlist-to-telegram
-# Добавь секреты: Settings → Secrets and variables → Actions
-# Затем: Actions → Run Music Bot → Run workflow
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env   # заполни данные
+python telegram_bot_music_youtube.py
 ```
 
-Бот запускается автоматически каждые 2 дня. Сервер не нужен.
+Для автозапуска на Windows создай задание в PowerShell:
+```powershell
+$action  = New-ScheduledTaskAction -Execute "python" `
+           -Argument "telegram_bot_music_youtube.py" `
+           -WorkingDirectory (Get-Location)
+$trigger = New-ScheduledTaskTrigger -Daily -DaysInterval 2 -At "10:00"
+Register-ScheduledTask -TaskName "SpaceMusicHubBot" -Action $action -Trigger $trigger
+```
 
 #### Вариант 2 — Docker
 
@@ -282,6 +327,19 @@ Telegram bots, kas automātiski lejupielādē audio no YouTube atskaņošanas sa
 | 🔁 Atkārtošanas loģika | Eksponenciāla aizkave neveiksmīgiem izsaukumiem |
 | 🔔 Administratora paziņojumi | Kopsavilkuma ziņojums Telegram pēc katras izpildes |
 | ☁️ Bezmaksas hostings | GitHub Actions grafiks — nulles infrastruktūras izmaksas |
+
+### ⚠️ GitHub Actions ierobežojums
+
+GitHub Actions izmanto **Microsoft Azure** serverus, kuru IP adreses YouTube atpazīst kā datu centru un bloķē ar kļūdu `Sign in to confirm you're not a bot`. Tas nozīmē, ka `yt-dlp` **nevar lejupielādēt audio** GitHub Actions vidē.
+
+| Darbojas GitHub Actions | NEDARBOJAS |
+|---|---|
+| ✅ Lint + testi (`ci.yml`) | ❌ Audio lejupielāde no YouTube |
+| ✅ Ieplānotā izpilde | ❌ MP3 sūtīšana uz Telegram |
+
+**Ieteicamā izvietošana pilnai funkcionalitātei:** palaid botu jebkurā mašīnā ar mājas vai ne-datu-centra IP — savs dators, mājas serveris vai VPS ārpus Azure/AWS/GCP.
+
+---
 
 ### 🚀 Ātrā palaišana
 
