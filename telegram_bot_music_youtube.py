@@ -538,6 +538,10 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
             pinned_msgs["last_message_id"] = message.message_id
             posted += 1
 
+            # Persist state immediately so a crash/restart never re-posts this track
+            save_json(channel.sent_videos_file, sent_videos)
+            save_json(channel.pinned_msgs_file, pinned_msgs)
+
         except Exception as exc:  # noqa: BLE001
             logger.error(
                 "[%s] Failed to process %s (%s): %s",
