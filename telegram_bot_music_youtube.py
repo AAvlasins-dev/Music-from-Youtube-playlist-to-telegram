@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "downloads")
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "")  # optional: get run summary in Telegram
 
 RETRY_ATTEMPTS = int(os.getenv("RETRY_ATTEMPTS", "3"))
 RETRY_DELAY = float(os.getenv("RETRY_DELAY", "5"))
@@ -69,6 +70,14 @@ CHANNELS = [
 ]
 
 executor = ThreadPoolExecutor(max_workers=2)
+
+
+def _normalise_channel_id(raw: str) -> str:
+    """Ensure channel_id always has exactly one leading '@'."""
+    raw = (raw or "").strip()
+    if not raw:
+        return raw
+    return raw if raw.startswith("@") else f"@{raw}"
 
 
 def _validate_config() -> None:
@@ -99,11 +108,6 @@ def save_json(path: str, data: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     logger.debug("State saved: %s", path)
-
-
-def filter_new_videos(videos: list[dict], sent_videos: dict) -> list[dict]:
-    """Return only the videos whose id is not already present in the sent state."""
-    return [v for v in videos if v["id"] not in sent_videos]
 
 
 # ---------------------------------------------------------------------------
@@ -208,15 +212,19 @@ def _download_audio(video_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Telegram
+# Telegram helpers
 # ---------------------------------------------------------------------------
 @with_retry()
-async def _send_audio(bot: Bot, chat_id: str, mp3_path: str, title: str):
+async def _send_audio(bot: Bot, chat_id: str, mp3_path: str, title: str, video_id: str):
+    yt_url = f"https://youtu.be/{video_id}"
+    caption = f"🎵 <b>{title}</b>\n\n📺 <a href=\"{yt_url}\">Watch on YouTube</a>"
     with open(mp3_path, "rb") as audio_file:
         return await bot.send_audio(
             chat_id=chat_id,
             audio=audio_file,
             title=title,
+            caption=caption,
+            parse_mode="HTML",
         )
 
 
@@ -232,32 +240,43 @@ async def _unpin_message(bot: Bot, chat_id: str, message_id: int) -> None:
     await bot.unpin_chat_message(chat_id=chat_id, message_id=message_id)
 
 
+async def _notify_admin(bot: Bot, text: str) -> None:
+    """Send a summary message to ADMIN_CHAT_ID if configured."""
+    if not ADMIN_CHAT_ID:
+        return
+    try:
+        await bot.send_message(chat_id=ADMIN_CHAT_ID, text=text, parse_mode="HTML")
+    except Exception as exc:
+        logger.warning("Could not notify admin: %s", exc)
+
+
 # ---------------------------------------------------------------------------
 # Core logic
 # ---------------------------------------------------------------------------
-async def post_new_videos(channel: dict) -> None:
+async def post_new_videos(channel: dict) -> dict:
     name = channel["name"]
     playlist_id = channel["playlist_id"]
-    channel_id = f"@{channel['channel_id']}"
+    channel_id = _normalise_channel_id(channel["channel_id"])
     sent_videos_file = channel["sent_videos_file"]
     pinned_msgs_file = channel["pinned_msgs_file"]
 
-    logger.info("--- Processing channel: %s ---", name)
+    logger.info("--- Processing channel: %s (%s) ---", name, channel_id)
 
     loop = asyncio.get_event_loop()
     sent_videos: dict = load_json(sent_videos_file)
     pinned_msgs: dict = load_json(pinned_msgs_file)
 
     videos = await loop.run_in_executor(executor, _get_playlist_videos, playlist_id)
-    new_videos = filter_new_videos(videos, sent_videos)
+    new_videos = [v for v in videos if v["id"] not in sent_videos]
 
     if not new_videos:
         logger.info("[%s] No new videos to post.", name)
-        return
+        return {"channel": name, "posted": 0, "failed": 0, "total_new": 0}
 
     logger.info("[%s] %d new video(s) to post.", name, len(new_videos))
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     posted = 0
+    failed = 0
 
     for i, video in enumerate(new_videos, 1):
         video_id = video["id"]
@@ -269,7 +288,7 @@ async def post_new_videos(channel: dict) -> None:
             mp3_path = await loop.run_in_executor(executor, _download_audio, video_id)
             logger.info("[%s] Downloaded: %s", name, mp3_path)
 
-            message = await _send_audio(bot, channel_id, mp3_path, title)
+            message = await _send_audio(bot, channel_id, mp3_path, title, video_id)
             sent_videos[video_id] = {
                 "title": title,
                 "message_id": message.message_id,
@@ -290,6 +309,7 @@ async def post_new_videos(channel: dict) -> None:
 
         except Exception as e:
             logger.error("[%s] Failed to process %s (%s): %s", name, video_id, title, e)
+            failed += 1
 
         finally:
             if mp3_path and os.path.exists(mp3_path):
@@ -301,7 +321,8 @@ async def post_new_videos(channel: dict) -> None:
 
     save_json(sent_videos_file, sent_videos)
     save_json(pinned_msgs_file, pinned_msgs)
-    logger.info("[%s] Done. Posted %d/%d video(s).", name, posted, len(new_videos))
+    logger.info("[%s] Done. Posted %d/%d, failed %d.", name, posted, len(new_videos), failed)
+    return {"channel": name, "posted": posted, "failed": failed, "total_new": len(new_videos)}
 
 
 # ---------------------------------------------------------------------------
@@ -309,8 +330,24 @@ async def post_new_videos(channel: dict) -> None:
 # ---------------------------------------------------------------------------
 async def main() -> None:
     _validate_config()
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    results = []
+
     for channel in CHANNELS:
-        await post_new_videos(channel)
+        result = await post_new_videos(channel)
+        results.append(result)
+
+    # Admin summary notification
+    if ADMIN_CHAT_ID:
+        lines = ["<b>🤖 Bot run complete</b>\n"]
+        for r in results:
+            status = "✅" if r["failed"] == 0 else "⚠️"
+            lines.append(
+                f"{status} <b>{r['channel']}</b>: "
+                f"posted {r['posted']}/{r['total_new']}"
+                + (f", failed {r['failed']}" if r["failed"] else "")
+            )
+        await _notify_admin(bot, "\n".join(lines))
 
 
 if __name__ == "__main__":

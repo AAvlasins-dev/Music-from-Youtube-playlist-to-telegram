@@ -31,10 +31,19 @@ jobs:
         env:
           YOUTUBE_COOKIES_B64: ${{ secrets.YOUTUBE_COOKIES_B64 }}
         run: |
-          if [ -n "$YOUTUBE_COOKIES_B64" ]; then
-            printf '%s' "$YOUTUBE_COOKIES_B64" | tr -d '[:space:]' | base64 -d > youtube_cookies.txt
-            echo "YOUTUBE_COOKIES_FILE=youtube_cookies.txt" >> $GITHUB_ENV
-          fi
+          python - <<'EOF'
+          import base64, os
+          raw = os.environ.get("YOUTUBE_COOKIES_B64", "").strip()
+          if raw:
+              data = base64.b64decode(raw)
+              with open("youtube_cookies.txt", "wb") as f:
+                  f.write(data)
+              with open(os.environ["GITHUB_ENV"], "a") as f:
+                  f.write("YOUTUBE_COOKIES_FILE=youtube_cookies.txt\n")
+              print("Cookies decoded successfully.")
+          else:
+              print("No YOUTUBE_COOKIES_B64 secret found — running without cookies.")
+          EOF
 
       - name: Run bot
         env:
@@ -43,12 +52,9 @@ jobs:
           TELEGRAM_CHANNEL_ANDREY: ${{ secrets.TELEGRAM_CHANNEL_ANDREY }}
           PLAYLIST_BAYBA: ${{ secrets.PLAYLIST_BAYBA }}
           TELEGRAM_CHANNEL_BAYBA: ${{ secrets.TELEGRAM_CHANNEL_BAYBA }}
+          ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
         run: python telegram_bot_music_youtube.py
 
-      # State files are gitignored locally but must persist between CI runs.
-      # The bot writes one pair per channel (sent_videos_<name>.json / pinned_msgs_<name>.json),
-      # so force-add the suffixed files — NOT the un-suffixed legacy names — or state is lost
-      # and every run re-posts the whole playlist.
       - name: Commit updated state
         run: |
           git config user.name  "github-actions[bot]"
