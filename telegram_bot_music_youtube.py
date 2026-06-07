@@ -590,6 +590,22 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logger.info("=== space-music-hub bot v%s starting ===", __version__)
-    asyncio.run(main())
-    logger.info("=== bot run complete ===")
+    # Prevent two instances running at the same time (would cause duplicate posts).
+    _LOCK_FILE = "bot.lock"
+    if os.path.exists(_LOCK_FILE):
+        logger.error(
+            "Lock file '%s' already exists — another instance may be running. "
+            "Delete the file manually if the previous run crashed.",
+            _LOCK_FILE,
+        )
+        raise SystemExit(1)
+
+    try:
+        with open(_LOCK_FILE, "w") as _lf:
+            _lf.write(str(os.getpid()))
+        logger.info("=== space-music-hub bot v%s starting ===", __version__)
+        asyncio.run(main())
+        logger.info("=== bot run complete ===")
+    finally:
+        if os.path.exists(_LOCK_FILE):
+            os.remove(_LOCK_FILE)
