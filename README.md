@@ -97,7 +97,7 @@ To run automatically on Windows, create a scheduled task:
 $action  = New-ScheduledTaskAction -Execute "python" `
            -Argument "telegram_bot_music_youtube.py" `
            -WorkingDirectory (Get-Location)
-$trigger = New-ScheduledTaskTrigger -Daily -DaysInterval 2 -At "10:00"
+$trigger = New-ScheduledTaskTrigger -Daily -At "10:00"
 Register-ScheduledTask -TaskName "SpaceMusicHubBot" -Action $action -Trigger $trigger
 ```
 
@@ -164,7 +164,7 @@ space-music-hub/
 ├── CHANGELOG.md                    # Version history
 ├── .github/
 │   └── workflows/
-│       ├── bot.yml                 # Scheduled bot runner (every 2 days)
+│       ├── bot.yml                 # Scheduled bot runner (daily)
 │       └── ci.yml                  # Lint + tests on every push
 └── tests/
     └── test_bot.py                 # Unit tests (pytest)
@@ -245,7 +245,7 @@ python telegram_bot_music_youtube.py
 $action  = New-ScheduledTaskAction -Execute "python" `
            -Argument "telegram_bot_music_youtube.py" `
            -WorkingDirectory (Get-Location)
-$trigger = New-ScheduledTaskTrigger -Daily -DaysInterval 2 -At "10:00"
+$trigger = New-ScheduledTaskTrigger -Daily -At "10:00"
 Register-ScheduledTask -TaskName "SpaceMusicHubBot" -Action $action -Trigger $trigger
 ```
 
