@@ -22,6 +22,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +35,23 @@ from dotenv import load_dotenv
 from telegram import Bot, Message
 from telegram import error as tg_error
 
+
+def _app_dir() -> str:
+    """Return the directory of the running app.
+
+    When frozen by PyInstaller this is the folder containing the ``.exe``;
+    otherwise it is the directory of this source file. Used to locate the
+    ``.env`` file and a bundled ``ffmpeg.exe`` regardless of the current
+    working directory the app was launched from.
+    """
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+# Load .env from the app directory first (works when double-clicking the exe),
+# then fall back to the default search so plain `python script.py` still works.
+load_dotenv(os.path.join(_app_dir(), ".env"))
 load_dotenv()
 
 # ---------------------------------------------------------------------------
@@ -44,9 +62,10 @@ def _find_ffmpeg() -> str | None:
 
     Search order:
     1. ``FFMPEG_PATH`` environment variable (explicit override).
-    2. ``ffmpeg`` on the system PATH (resolved to an absolute path so that
+    2. ``ffmpeg.exe`` next to the app — bundled with the ``.exe`` release.
+    3. ``ffmpeg`` on the system PATH (resolved to an absolute path so that
        yt-dlp can locate it regardless of the working directory at run time).
-    3. The binary bundled by *ffmpeg-downloader* (installed via
+    4. The binary bundled by *ffmpeg-downloader* (installed via
        ``pip install ffmpeg-downloader && python -m ffmpeg_downloader install``).
     """
     # 1. Explicit override
@@ -54,14 +73,20 @@ def _find_ffmpeg() -> str | None:
     if env_path and os.path.isfile(env_path):
         return env_path
 
-    # 2. System PATH — always resolve to absolute so CWD doesn't matter
+    # 2. ffmpeg.exe / ffmpeg next to the app (bundled with the .exe release)
+    for fname in ("ffmpeg.exe", "ffmpeg"):
+        beside = os.path.join(_app_dir(), fname)
+        if os.path.isfile(beside):
+            return beside
+
+    # 3. System PATH — always resolve to absolute so CWD doesn't matter
     which = shutil.which("ffmpeg")
     if which:
         abs_which = os.path.abspath(which)
         if os.path.isfile(abs_which):
             return abs_which
 
-    # 3. ffmpeg-downloader bundle
+    # 4. ffmpeg-downloader bundle
     try:
         import ffmpeg_downloader as _ffd  # type: ignore[import]
 
@@ -165,24 +190,77 @@ class RunResult:
 
 
 # ---------------------------------------------------------------------------
-# Channel list — extend this list to add more playlist → channel pairs
+# Channel loading — supports unlimited numbered pairs + legacy named pairs
 # ---------------------------------------------------------------------------
-CHANNELS: list[ChannelConfig] = [
-    ChannelConfig(
-        name="andrey",
-        playlist_id=os.getenv("PLAYLIST_ANDREY", ""),
-        channel_id=os.getenv("TELEGRAM_CHANNEL_ANDREY", ""),
-        sent_videos_file="sent_videos_andrey.json",
-        pinned_msgs_file="pinned_msgs_andrey.json",
-    ),
-    ChannelConfig(
-        name="bayba",
-        playlist_id=os.getenv("PLAYLIST_BAYBA", ""),
-        channel_id=os.getenv("TELEGRAM_CHANNEL_BAYBA", ""),
-        sent_videos_file="sent_videos_bayba.json",
-        pinned_msgs_file="pinned_msgs_bayba.json",
-    ),
-]
+# Legacy named pairs kept for backward compatibility with older .env files.
+_LEGACY_PAIRS: tuple[tuple[str, str, str], ...] = (
+    ("andrey", "PLAYLIST_ANDREY", "TELEGRAM_CHANNEL_ANDREY"),
+    ("bayba", "PLAYLIST_BAYBA", "TELEGRAM_CHANNEL_BAYBA"),
+)
+
+
+def _load_channels() -> list[ChannelConfig]:
+    """Build the channel list from environment variables.
+
+    Two formats are supported (numbered takes priority):
+
+    1. **Numbered pairs** — unlimited, add a channel without touching code::
+
+           CHANNEL_1_NAME=mychannel          # optional, defaults to "channel1"
+           CHANNEL_1_PLAYLIST=PLxxxxxxxx
+           CHANNEL_1_TELEGRAM=my_tg_channel
+
+    2. **Legacy named pairs** — backward compatible::
+
+           PLAYLIST_ANDREY / TELEGRAM_CHANNEL_ANDREY
+           PLAYLIST_BAYBA  / TELEGRAM_CHANNEL_BAYBA
+
+    Returns:
+        A list of :class:`ChannelConfig`, empty if nothing is configured.
+    """
+    channels: list[ChannelConfig] = []
+
+    # Format 1 — numbered pairs (CHANNEL_1_*, CHANNEL_2_*, …)
+    index = 1
+    while True:
+        playlist = os.getenv(f"CHANNEL_{index}_PLAYLIST")
+        telegram = os.getenv(f"CHANNEL_{index}_TELEGRAM")
+        if not playlist or not telegram:
+            break
+        name = os.getenv(f"CHANNEL_{index}_NAME", f"channel{index}")
+        channels.append(
+            ChannelConfig(
+                name=name,
+                playlist_id=playlist,
+                channel_id=telegram,
+                sent_videos_file=f"sent_videos_{name}.json",
+                pinned_msgs_file=f"pinned_msgs_{name}.json",
+            )
+        )
+        index += 1
+
+    if channels:
+        return channels
+
+    # Format 2 — legacy named pairs (only if no numbered pairs were found)
+    for name, playlist_var, channel_var in _LEGACY_PAIRS:
+        playlist = os.getenv(playlist_var)
+        telegram = os.getenv(channel_var)
+        if playlist and telegram:
+            channels.append(
+                ChannelConfig(
+                    name=name,
+                    playlist_id=playlist,
+                    channel_id=telegram,
+                    sent_videos_file=f"sent_videos_{name}.json",
+                    pinned_msgs_file=f"pinned_msgs_{name}.json",
+                )
+            )
+
+    return channels
+
+
+CHANNELS: list[ChannelConfig] = _load_channels()
 
 # Shared thread pool for blocking yt-dlp operations (I/O + network).
 # Two workers: one for playlist fetch, one for audio download.
@@ -203,21 +281,19 @@ _YDL_COMMON: dict[str, Any] = {
 # Config validation
 # ---------------------------------------------------------------------------
 def _validate_config() -> None:
-    """Raise :class:`EnvironmentError` if any required variable is missing."""
-    missing = [
-        var
-        for var in (
-            "TELEGRAM_BOT_TOKEN",
-            "PLAYLIST_ANDREY",
-            "TELEGRAM_CHANNEL_ANDREY",
-            "PLAYLIST_BAYBA",
-            "TELEGRAM_CHANNEL_BAYBA",
-        )
-        if not os.getenv(var)
-    ]
-    if missing:
+    """Validate that a bot token and at least one channel are configured.
+
+    Raises:
+        OSError: If ``TELEGRAM_BOT_TOKEN`` is missing or no channel pair is set.
+    """
+    if not os.getenv("TELEGRAM_BOT_TOKEN"):
+        raise OSError("Missing required environment variable: TELEGRAM_BOT_TOKEN")
+
+    if not _load_channels():
         raise OSError(
-            f"Missing required environment variables: {', '.join(missing)}"
+            "No channels configured. Define at least one pair — either "
+            "CHANNEL_1_PLAYLIST + CHANNEL_1_TELEGRAM, or the legacy "
+            "PLAYLIST_ANDREY + TELEGRAM_CHANNEL_ANDREY."
         )
 
 

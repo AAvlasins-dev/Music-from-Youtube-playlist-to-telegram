@@ -14,6 +14,8 @@ Network and Telegram calls are intentionally not exercised here.
 from __future__ import annotations
 
 import asyncio
+import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -198,22 +200,324 @@ class TestRetryAsync:
 
 
 # --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+def _clear_channel_env(monkeypatch):
+    """Remove every channel-related env var for a clean slate."""
+    for var in REQUIRED_ENV:
+        monkeypatch.delenv(var, raising=False)
+    for i in range(1, 12):
+        for suffix in ("PLAYLIST", "TELEGRAM", "NAME"):
+            monkeypatch.delenv(f"CHANNEL_{i}_{suffix}", raising=False)
+
+
+# --------------------------------------------------------------------------- #
 # Config validation
 # --------------------------------------------------------------------------- #
 class TestValidateConfig:
-    def test_raises_when_missing(self, monkeypatch):
-        for var in REQUIRED_ENV:
-            monkeypatch.delenv(var, raising=False)
-        with pytest.raises(EnvironmentError):
+    def test_raises_when_token_missing(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        with pytest.raises(OSError, match="TELEGRAM_BOT_TOKEN"):
             bot._validate_config()
 
-    def test_passes_when_present(self, monkeypatch):
-        for var in REQUIRED_ENV:
-            monkeypatch.setenv(var, "dummy")
+    def test_raises_when_no_channels(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
+        with pytest.raises(OSError, match="No channels configured"):
+            bot._validate_config()
+
+    def test_passes_with_legacy_pair(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
+        monkeypatch.setenv("PLAYLIST_ANDREY", "PL1")
+        monkeypatch.setenv("TELEGRAM_CHANNEL_ANDREY", "chan")
         bot._validate_config()  # must not raise
 
-    def test_error_message_lists_missing_vars(self, monkeypatch):
-        for var in REQUIRED_ENV:
-            monkeypatch.delenv(var, raising=False)
-        with pytest.raises(EnvironmentError, match="TELEGRAM_BOT_TOKEN"):
-            bot._validate_config()
+    def test_passes_with_numbered_pair(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "dummy")
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "chan")
+        bot._validate_config()  # must not raise
+
+
+# --------------------------------------------------------------------------- #
+# Dynamic channel loading
+# --------------------------------------------------------------------------- #
+class TestLoadChannels:
+    def test_empty_when_nothing_set(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        assert bot._load_channels() == []
+
+    def test_legacy_pairs(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("PLAYLIST_ANDREY", "PLa")
+        monkeypatch.setenv("TELEGRAM_CHANNEL_ANDREY", "andrey_ch")
+        monkeypatch.setenv("PLAYLIST_BAYBA", "PLb")
+        monkeypatch.setenv("TELEGRAM_CHANNEL_BAYBA", "bayba_ch")
+        channels = bot._load_channels()
+        assert [c.name for c in channels] == ["andrey", "bayba"]
+        assert channels[0].playlist_id == "PLa"
+        assert channels[1].channel_id == "bayba_ch"
+
+    def test_numbered_pairs(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
+        monkeypatch.setenv("CHANNEL_2_PLAYLIST", "PL2")
+        monkeypatch.setenv("CHANNEL_2_TELEGRAM", "tg2")
+        channels = bot._load_channels()
+        assert len(channels) == 2
+        assert channels[0].playlist_id == "PL1"
+        assert channels[1].channel_id == "tg2"
+
+    def test_numbered_custom_name(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("CHANNEL_1_NAME", "rock")
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
+        channels = bot._load_channels()
+        assert channels[0].name == "rock"
+        assert channels[0].sent_videos_file == "sent_videos_rock.json"
+
+    def test_numbered_default_name(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
+        assert bot._load_channels()[0].name == "channel1"
+
+    def test_numbered_takes_priority_over_legacy(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("PLAYLIST_ANDREY", "PLa")
+        monkeypatch.setenv("TELEGRAM_CHANNEL_ANDREY", "andrey_ch")
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
+        channels = bot._load_channels()
+        assert len(channels) == 1
+        assert channels[0].playlist_id == "PL1"
+
+    def test_stops_at_first_gap(self, monkeypatch):
+        _clear_channel_env(monkeypatch)
+        monkeypatch.setenv("CHANNEL_1_PLAYLIST", "PL1")
+        monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
+        # CHANNEL_2 missing, CHANNEL_3 set — loader must stop at the gap
+        monkeypatch.setenv("CHANNEL_3_PLAYLIST", "PL3")
+        monkeypatch.setenv("CHANNEL_3_TELEGRAM", "tg3")
+        assert len(bot._load_channels()) == 1
+
+
+# --------------------------------------------------------------------------- #
+# ffmpeg discovery
+# --------------------------------------------------------------------------- #
+class TestFindFfmpeg:
+    def test_env_override(self, tmp_path, monkeypatch):
+        fake = tmp_path / "my_ffmpeg.exe"
+        fake.write_bytes(b"binary")
+        monkeypatch.setenv("FFMPEG_PATH", str(fake))
+        assert bot._find_ffmpeg() == str(fake)
+
+    def test_beside_app(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("FFMPEG_PATH", raising=False)
+        (tmp_path / "ffmpeg.exe").write_bytes(b"binary")
+        monkeypatch.setattr(bot, "_app_dir", lambda: str(tmp_path))
+        assert bot._find_ffmpeg() == str(tmp_path / "ffmpeg.exe")
+
+    def test_env_override_beats_beside_app(self, tmp_path, monkeypatch):
+        explicit = tmp_path / "explicit.exe"
+        explicit.write_bytes(b"binary")
+        (tmp_path / "ffmpeg.exe").write_bytes(b"binary")
+        monkeypatch.setenv("FFMPEG_PATH", str(explicit))
+        monkeypatch.setattr(bot, "_app_dir", lambda: str(tmp_path))
+        assert bot._find_ffmpeg() == str(explicit)
+
+
+# --------------------------------------------------------------------------- #
+# Audio download
+# --------------------------------------------------------------------------- #
+class _FakeYDL:
+    """Stand-in for yt_dlp.YoutubeDL that writes a file instead of downloading."""
+
+    written_size = 200_000  # > the 50 KB minimum by default
+
+    def __init__(self, opts):
+        self.opts = opts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def download(self, urls):
+        if self.written_size is None:
+            return  # simulate "nothing produced"
+        path = self.opts["outtmpl"].replace("%(ext)s", "mp3")
+        with open(path, "wb") as f:
+            f.write(b"\x00" * self.written_size)
+
+
+class TestDownloadAudio:
+    def test_returns_path_for_valid_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bot, "DOWNLOAD_DIR", str(tmp_path))
+        monkeypatch.setattr(bot.yt_dlp, "YoutubeDL", _FakeYDL)
+        result = bot._download_audio("vid123")
+        assert result.endswith("vid123.mp3")
+        assert os.path.exists(result)
+
+    def test_raises_when_nothing_produced(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bot, "DOWNLOAD_DIR", str(tmp_path))
+        monkeypatch.setattr(bot.time, "sleep", lambda *a: None)  # skip retry waits
+
+        class _EmptyYDL(_FakeYDL):
+            written_size = None
+
+        monkeypatch.setattr(bot.yt_dlp, "YoutubeDL", _EmptyYDL)
+        with pytest.raises(FileNotFoundError):
+            bot._download_audio("missing")
+
+    def test_rejects_small_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bot, "DOWNLOAD_DIR", str(tmp_path))
+        monkeypatch.setattr(bot.time, "sleep", lambda *a: None)
+
+        class _TinyYDL(_FakeYDL):
+            written_size = 100  # below the 50 KB threshold
+
+        monkeypatch.setattr(bot.yt_dlp, "YoutubeDL", _TinyYDL)
+        with pytest.raises(FileNotFoundError):
+            bot._download_audio("tiny")
+        # the rejected file must have been cleaned up
+        assert not os.path.exists(str(tmp_path / "tiny.mp3"))
+
+
+# --------------------------------------------------------------------------- #
+# post_new_videos — core posting loop
+# --------------------------------------------------------------------------- #
+class _FakeBot:
+    """Async stand-in for telegram.Bot that records calls instead of network I/O."""
+
+    def __init__(self, *args, **kwargs):
+        self.sent_audios: list[dict] = []
+        self.pinned: list[int] = []
+        self.unpinned: list[int] = []
+
+    async def send_audio(self, chat_id, audio, title, caption, parse_mode):
+        mid = 1000 + len(self.sent_audios)
+        self.sent_audios.append({"chat_id": chat_id, "title": title, "message_id": mid})
+        return SimpleNamespace(message_id=mid)
+
+    async def pin_chat_message(self, chat_id, message_id, disable_notification):
+        self.pinned.append(message_id)
+
+    async def unpin_chat_message(self, chat_id, message_id):
+        self.unpinned.append(message_id)
+
+
+def _setup_post(tmp_path, monkeypatch, videos, *, fail_ids=()):
+    """Wire up a fully-mocked environment for post_new_videos and return the bot."""
+    fake_bot = _FakeBot()
+    monkeypatch.setattr(bot, "Bot", lambda *a, **k: fake_bot)
+    monkeypatch.setattr(bot, "POST_DELAY", 0)
+    monkeypatch.setattr(bot, "_get_playlist_videos", lambda playlist_id: videos)
+
+    def fake_download(video_id):
+        if video_id in fail_ids:
+            raise RuntimeError(f"download failed for {video_id}")
+        path = os.path.join(str(tmp_path), f"{video_id}.mp3")
+        with open(path, "wb") as f:
+            f.write(b"\x00" * 100)
+        return path
+
+    monkeypatch.setattr(bot, "_download_audio", fake_download)
+    return fake_bot
+
+
+def _make_channel(tmp_path, **overrides):
+    return bot.ChannelConfig(
+        name=overrides.get("name", "test"),
+        playlist_id=overrides.get("playlist_id", "PL1"),
+        channel_id=overrides.get("channel_id", "test_channel"),
+        sent_videos_file=str(tmp_path / "sent.json"),
+        pinned_msgs_file=str(tmp_path / "pinned.json"),
+    )
+
+
+class TestPostNewVideos:
+    def test_posts_all_new_videos(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}, {"id": "b", "title": "Track B"}]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.posted == 2
+        assert result.failed == 0
+        assert result.total_new == 2
+        assert [s["title"] for s in fake_bot.sent_audios] == ["Track A", "Track B"]
+
+    def test_skips_already_sent(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}, {"id": "b", "title": "Track B"}]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+        bot.save_json(channel.sent_videos_file, {"a": {"title": "Track A"}})
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.posted == 1
+        assert result.total_new == 1
+        assert [s["title"] for s in fake_bot.sent_audios] == ["Track B"]
+
+    def test_no_new_videos_returns_zero(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}]
+        _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+        bot.save_json(channel.sent_videos_file, {"a": {"title": "Track A"}})
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.posted == 0
+        assert result.total_new == 0
+
+    def test_counts_download_failure(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}, {"id": "b", "title": "Track B"}]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos, fail_ids=("a",))
+        channel = _make_channel(tmp_path)
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.posted == 1
+        assert result.failed == 1
+        assert [s["title"] for s in fake_bot.sent_audios] == ["Track B"]
+
+    def test_persists_state_after_each_post(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}]
+        _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+
+        asyncio.run(bot.post_new_videos(channel))
+
+        saved = bot.load_json(channel.sent_videos_file)
+        assert "a" in saved
+        assert saved["a"]["title"] == "Track A"
+
+    def test_pins_latest_message(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}, {"id": "b", "title": "Track B"}]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+
+        asyncio.run(bot.post_new_videos(channel))
+
+        # the last sent message id must be the one left pinned
+        last_msg_id = fake_bot.sent_audios[-1]["message_id"]
+        assert fake_bot.pinned[-1] == last_msg_id
+        saved_pin = bot.load_json(channel.pinned_msgs_file)
+        assert saved_pin["last_message_id"] == last_msg_id
+
+    def test_cleans_up_downloaded_files(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "Track A"}]
+        _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+
+        asyncio.run(bot.post_new_videos(channel))
+
+        # the temp mp3 must be removed after a successful send
+        assert not os.path.exists(str(tmp_path / "a.mp3"))
