@@ -16,6 +16,7 @@ Configuration is done entirely through environment variables (see .env.example).
 from __future__ import annotations
 
 import asyncio
+import atexit
 import json
 import logging
 import logging.handlers
@@ -77,13 +78,12 @@ _FFMPEG_PATH: str | None = _find_ffmpeg()
 
 __version__ = "1.3.0"
 __all__ = [
-    "load_json",
-    "save_json",
-    "filter_new_videos",
-    "with_retry",
-    "post_new_videos",
     "ChannelConfig",
     "RunResult",
+    "filter_new_videos",
+    "load_json",
+    "save_json",
+    "with_retry",
 ]
 
 # ---------------------------------------------------------------------------
@@ -184,7 +184,10 @@ CHANNELS: list[ChannelConfig] = [
     ),
 ]
 
+# Shared thread pool for blocking yt-dlp operations (I/O + network).
+# Two workers: one for playlist fetch, one for audio download.
 _executor = ThreadPoolExecutor(max_workers=2)
+atexit.register(_executor.shutdown, wait=True)
 
 # yt-dlp options shared by both playlist fetch and audio download
 _YDL_COMMON: dict[str, Any] = {
@@ -375,6 +378,7 @@ def _download_audio(video_id: str) -> str:
     }
 
     if _FFMPEG_PATH:
+        logger.debug("Using ffmpeg at: %s", _FFMPEG_PATH)
         ydl_opts["ffmpeg_location"] = _FFMPEG_PATH
         ydl_opts["postprocessors"] = [
             {
@@ -383,14 +387,28 @@ def _download_audio(video_id: str) -> str:
                 "preferredquality": "192",
             }
         ]
+    else:
+        logger.warning(
+            "ffmpeg not found — audio will be downloaded in native format (m4a/mp4). "
+            "Run: pip install ffmpeg-downloader && python -m ffmpeg_downloader install"
+        )
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
 
-    # Accept any extension yt-dlp may have written
+    # Accept any extension yt-dlp may have written; reject suspiciously small files
+    _MIN_AUDIO_BYTES = 50_000  # 50 KB — a valid track is always larger
     for ext in ("mp3", "m4a", "webm", "opus", "ogg", "mp4"):
         path = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
         if os.path.exists(path):
+            size = os.path.getsize(path)
+            if size < _MIN_AUDIO_BYTES:
+                logger.warning(
+                    "Downloaded file is suspiciously small (%d B): %s — skipping",
+                    size, path,
+                )
+                os.remove(path)
+                continue
             return path
 
     raise FileNotFoundError(f"No audio file found after download: {video_id}")
@@ -464,7 +482,7 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
     chat_id = channel.normalised_channel_id
     logger.info("--- Processing channel: %s (%s) ---", channel.name, chat_id)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     sent_videos: dict[str, Any] = load_json(channel.sent_videos_file)
     pinned_msgs: dict[str, Any] = load_json(channel.pinned_msgs_file)
 
