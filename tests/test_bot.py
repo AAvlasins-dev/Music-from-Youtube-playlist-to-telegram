@@ -278,7 +278,7 @@ class TestLoadChannels:
         monkeypatch.setenv("CHANNEL_1_TELEGRAM", "tg1")
         channels = bot._load_channels()
         assert channels[0].name == "rock"
-        assert channels[0].sent_videos_file == "sent_videos_rock.json"
+        assert os.path.basename(channels[0].sent_videos_file) == "sent_videos_rock.json"
 
     def test_numbered_default_name(self, monkeypatch):
         _clear_channel_env(monkeypatch)

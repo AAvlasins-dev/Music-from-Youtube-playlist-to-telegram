@@ -8,6 +8,11 @@ pinned_msgs*.json
 # Single-instance lock file (created at runtime)
 bot.lock
 
+# PyInstaller build artifacts (the .exe is published via GitHub Releases)
+build/
+dist/
+*.spec
+
 # Docker volume data directory
 data/
 

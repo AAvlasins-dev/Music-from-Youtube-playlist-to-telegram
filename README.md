@@ -3,6 +3,7 @@
 [![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-production%20live-brightgreen)
+[![Windows .exe](https://img.shields.io/badge/Windows-.exe%20release-0078D6?logo=windows)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![python-telegram-bot](https://img.shields.io/badge/python--telegram--bot-21.6-blue?logo=telegram)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-2026.3-red?logo=youtube)
@@ -29,8 +30,12 @@ Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-
 
 | Feature | Description |
 |---|---|
+| 📦 Standalone `.exe` | One-file Windows build — no Python required on the target PC |
+| 🔎 `--check` dry-run | Validate config + count new tracks without posting anything |
+| ♾️ Unlimited channels | Add `CHANNEL_N_*` pairs in `.env` — no code changes needed |
 | 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real MP3 file |
-| 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH or via `ffmpeg-downloader` — no manual setup needed |
+| 🔒 Single-instance lock | `bot.lock` prevents two runs colliding and duplicating posts |
+| 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH, beside the app, or via `ffmpeg-downloader` |
 | 🔗 YouTube link in caption | Each post includes the original YouTube link |
 | 📌 Auto-pinning | Unpins the previous post, pins the latest one automatically |
 | 💾 State persistence | Tracks posted videos in JSON files — never re-posts the same track |
@@ -81,7 +86,24 @@ GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube ident
 
 ### 🚀 Quick Start
 
-#### Option 1 — Local Python + Windows Task Scheduler (recommended)
+#### Option 0 — Ready-made Windows .exe (no Python needed) ⭐
+
+Download `SpaceMusicHub.exe` from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page, drop it next to a `.env` and `ffmpeg.exe`, then double-click.
+
+```cmd
+SpaceMusicHub.exe --check     # verify config without posting anything
+SpaceMusicHub.exe             # run for real
+```
+
+📖 **Full step-by-step guide (RU):** [INSTALL.md](INSTALL.md)
+
+Build it yourself from source:
+```cmd
+pip install -r requirements.txt pyinstaller
+build_exe.bat                 # → dist\SpaceMusicHub.exe
+```
+
+#### Option 1 — Local Python + Windows Task Scheduler
 
 ```bash
 git clone https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram.git
@@ -156,6 +178,8 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 ```
 space-music-hub/
 ├── telegram_bot_music_youtube.py   # Main bot script
+├── build_exe.bat                   # Builds dist\SpaceMusicHub.exe (PyInstaller)
+├── INSTALL.md                      # Detailed Windows install guide (RU)
 ├── requirements.txt                # Python dependencies
 ├── Dockerfile                      # Docker image definition
 ├── docker-compose.yml              # Docker Compose config
@@ -167,7 +191,7 @@ space-music-hub/
 │       ├── bot.yml                 # Scheduled bot runner (daily)
 │       └── ci.yml                  # Lint + tests on every push
 └── tests/
-    └── test_bot.py                 # Unit tests (pytest)
+    └── test_bot.py                 # 46 unit tests (pytest)
 ```
 
 ### 📦 Dependencies

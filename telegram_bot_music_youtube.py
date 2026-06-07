@@ -49,6 +49,18 @@ def _app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def _app_path(filename: str) -> str:
+    """Resolve a relative *filename* against :func:`_app_dir`.
+
+    Keeps state, log and lock files next to the app so they are found no
+    matter which working directory the app (or .exe) was launched from.
+    Absolute paths are returned unchanged.
+    """
+    if os.path.isabs(filename):
+        return filename
+    return os.path.join(_app_dir(), filename)
+
+
 # Load .env from the app directory first (works when double-clicking the exe),
 # then fall back to the default search so plain `python script.py` still works.
 load_dotenv(os.path.join(_app_dir(), ".env"))
@@ -101,7 +113,7 @@ def _find_ffmpeg() -> str | None:
 
 _FFMPEG_PATH: str | None = _find_ffmpeg()
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 __all__ = [
     "ChannelConfig",
     "RunResult",
@@ -114,7 +126,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Logging: console + rotating file
 # ---------------------------------------------------------------------------
-LOG_FILE = os.getenv("LOG_FILE", "bot.log")
+LOG_FILE = _app_path(os.getenv("LOG_FILE", "bot.log"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 _formatter = logging.Formatter(
@@ -233,8 +245,8 @@ def _load_channels() -> list[ChannelConfig]:
                 name=name,
                 playlist_id=playlist,
                 channel_id=telegram,
-                sent_videos_file=f"sent_videos_{name}.json",
-                pinned_msgs_file=f"pinned_msgs_{name}.json",
+                sent_videos_file=_app_path(f"sent_videos_{name}.json"),
+                pinned_msgs_file=_app_path(f"pinned_msgs_{name}.json"),
             )
         )
         index += 1
@@ -252,8 +264,8 @@ def _load_channels() -> list[ChannelConfig]:
                     name=name,
                     playlist_id=playlist,
                     channel_id=telegram,
-                    sent_videos_file=f"sent_videos_{name}.json",
-                    pinned_msgs_file=f"pinned_msgs_{name}.json",
+                    sent_videos_file=_app_path(f"sent_videos_{name}.json"),
+                    pinned_msgs_file=_app_path(f"pinned_msgs_{name}.json"),
                 )
             )
 
@@ -665,23 +677,100 @@ async def main() -> None:
         await _notify_admin(tg_bot, summary)
 
 
-if __name__ == "__main__":
-    # Prevent two instances running at the same time (would cause duplicate posts).
-    _LOCK_FILE = "bot.lock"
-    if os.path.exists(_LOCK_FILE):
+async def check() -> None:
+    """Dry-run: validate config, verify the bot token and count new tracks.
+
+    Downloads and posts *nothing* — safe to run at any time, even while a real
+    run is in progress. Useful to confirm everything is configured correctly.
+    """
+    _validate_config()
+    tg_bot = Bot(token=TELEGRAM_BOT_TOKEN)
+
+    me = await tg_bot.get_me()
+    logger.info("Bot token OK — connected as @%s (%s)", me.username, me.first_name)
+
+    loop = asyncio.get_running_loop()
+    for channel in CHANNELS:
+        videos = await loop.run_in_executor(
+            _executor, _get_playlist_videos, channel.playlist_id
+        )
+        sent = load_json(channel.sent_videos_file)
+        new = filter_new_videos(videos, sent)
+        logger.info(
+            "[%s -> %s] %d tracks in playlist, %d already posted, %d new",
+            channel.name, channel.normalised_channel_id,
+            len(videos), len(sent), len(new),
+        )
+    logger.info("Check complete — configuration looks valid.")
+
+
+def _pause_if_frozen() -> None:
+    """Keep the console window open when launched as a double-clicked .exe."""
+    if getattr(sys, "frozen", False):
+        try:
+            input("\nPress Enter to close...")
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+
+def _run_cli() -> int:
+    """Console entry point. Returns a process exit code."""
+    # --check / --dry-run: validate + count, no posting, no lock needed.
+    check_only = any(arg in ("--check", "--dry-run") for arg in sys.argv[1:])
+
+    if check_only:
+        try:
+            logger.info("=== space-music-hub check v%s ===", __version__)
+            asyncio.run(check())
+        except OSError as exc:
+            logger.error("Configuration error: %s", exc)
+            print(f"\n[X] {exc}\n\nFix your .env file and run again.")
+            _pause_if_frozen()
+            return 1
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Check failed: %s", exc)
+            print(f"\n[X] Check failed: {exc}\nSee bot.log for details.")
+            _pause_if_frozen()
+            return 1
+        _pause_if_frozen()
+        return 0
+
+    # Prevent two instances running at the same time (would duplicate posts).
+    lock_file = _app_path("bot.lock")
+    if os.path.exists(lock_file):
         logger.error(
             "Lock file '%s' already exists — another instance may be running. "
-            "Delete the file manually if the previous run crashed.",
-            _LOCK_FILE,
+            "If the previous run crashed, delete this file and try again.",
+            lock_file,
         )
-        raise SystemExit(1)
+        _pause_if_frozen()
+        return 1
 
+    exit_code = 0
     try:
-        with open(_LOCK_FILE, "w") as _lf:
-            _lf.write(str(os.getpid()))
+        with open(lock_file, "w") as lock_handle:
+            lock_handle.write(str(os.getpid()))
+
         logger.info("=== space-music-hub bot v%s starting ===", __version__)
         asyncio.run(main())
         logger.info("=== bot run complete ===")
+    except OSError as exc:
+        # Configuration problems (missing token / no channels) — show a clear,
+        # friendly message instead of a raw traceback.
+        logger.error("Configuration error: %s", exc)
+        print(f"\n[X] {exc}\n\nFix your .env file and run again.")
+        exit_code = 1
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error: %s", exc)
+        print(f"\n[X] Unexpected error: {exc}\nSee bot.log for details.")
+        exit_code = 1
     finally:
-        if os.path.exists(_LOCK_FILE):
-            os.remove(_LOCK_FILE)
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+
+    _pause_if_frozen()
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(_run_cli())

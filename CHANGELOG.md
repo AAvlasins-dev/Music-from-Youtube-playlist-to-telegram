@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.0] — 2026-06-08
+
+### Added
+- **Standalone Windows executable** — `build_exe.bat` produces `SpaceMusicHub.exe`
+  (PyInstaller, one-file). Bundles Python + yt-dlp + python-telegram-bot; ships
+  next to `.env` and `ffmpeg.exe`. No Python install required on the target PC.
+- **`--check` / `--dry-run` mode** — validates config, verifies the bot token,
+  and counts new tracks per channel **without downloading or posting anything**.
+  Safe to run any time.
+- **Dynamic channel loading** (`_load_channels`) — unlimited numbered pairs
+  `CHANNEL_N_PLAYLIST` / `CHANNEL_N_TELEGRAM` / `CHANNEL_N_NAME`; legacy
+  `PLAYLIST_ANDREY` / `TELEGRAM_CHANNEL_ANDREY` still supported.
+- **Single-instance lock** (`bot.lock`) — a second run exits immediately instead
+  of re-posting tracks (root cause of earlier duplicate posts).
+- **Incremental state save** — state is flushed after every posted track, so a
+  crash or restart resumes from the last success instead of starting over.
+- 21 new unit tests (25 → 46): channel loading, ffmpeg discovery, audio
+  download, and the full `post_new_videos` posting loop.
+- Detailed Russian installation guide (`INSTALL.md`).
+
+### Changed
+- Schedule switched from every-2-days to **daily** (Task Scheduler + CI cron).
+- App is now path-independent: `.env`, logs, state and lock files resolve
+  relative to the executable/script via `_app_dir()` — works no matter the
+  working directory or when frozen into an `.exe`.
+- `_find_ffmpeg()` now also checks for `ffmpeg.exe` next to the app first.
+- Friendly error messages + "Press Enter to close" pause when run as an `.exe`.
+
+---
+
 ## [1.3.0] — 2026-06-07
 
 ### Added
