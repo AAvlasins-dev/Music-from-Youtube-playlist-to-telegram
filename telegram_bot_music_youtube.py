@@ -164,6 +164,7 @@ def _get_playlist_videos(playlist_id: str) -> list[dict]:
         "quiet": True,
         "extract_flat": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["ios", "android", "web"]}},
         **({"cookiefile": YOUTUBE_COOKIES_FILE} if YOUTUBE_COOKIES_FILE else {}),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -200,6 +201,7 @@ def _download_audio(video_id: str) -> str:
         "outtmpl": output_template,
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["ios", "android", "web"]}},
         **({"cookiefile": YOUTUBE_COOKIES_FILE} if YOUTUBE_COOKIES_FILE else {}),
     }
     url = f"https://www.youtube.com/watch?v={video_id}"
