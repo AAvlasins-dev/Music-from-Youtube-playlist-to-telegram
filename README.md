@@ -30,9 +30,11 @@ Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-
 
 | Feature | Description |
 |---|---|
+| 🧙 Interactive setup wizard | First-run wizard verifies token/channel/playlist live — zero config files |
 | 📦 Standalone `.exe` | One-file Windows build — no Python required on the target PC |
+| 🖥️ Menu-driven app | Run / Check / Reconfigure from a console menu; `--run` for automation |
 | 🔎 `--check` dry-run | Validate config + count new tracks without posting anything |
-| ♾️ Unlimited channels | Add `CHANNEL_N_*` pairs in `.env` — no code changes needed |
+| ♾️ Unlimited channels | Add channels in the wizard or via `CHANNEL_N_*` — no code changes |
 | 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real MP3 file |
 | 🔒 Single-instance lock | `bot.lock` prevents two runs colliding and duplicating posts |
 | 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH, beside the app, or via `ffmpeg-downloader` |
@@ -86,14 +88,26 @@ GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube ident
 
 ### 🚀 Quick Start
 
-#### Option 0 — Ready-made Windows .exe (no Python needed) ⭐
+#### Option 0 — Ready-made Windows app (no Python, no config files) ⭐
 
-Download `SpaceMusicHub.exe` from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page, drop it next to a `.env` and `ffmpeg.exe`, then double-click.
+Download the ZIP from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page, unzip, and **double-click `SpaceMusicHub.exe`**. On first launch an **interactive setup wizard** asks for your bot token, channel and playlist — verifies each one live — and writes the config for you. No manual `.env` editing.
 
-```cmd
-SpaceMusicHub.exe --check     # verify config without posting anything
-SpaceMusicHub.exe             # run for real
+```text
+[1/3] Telegram bot token   ->  paste token   (verified instantly)
+[2/3] Channels             ->  paste @channel + playlist URL
+[3/3] Saving configuration ->  done — Run now? (Y/n)
 ```
+
+After setup, every launch shows a simple menu:
+
+```text
+  1) Run now      - download & post new tracks
+  2) Check        - verify config, count new tracks (no posting)
+  3) Reconfigure  - run the setup wizard again
+  4) Exit
+```
+
+CLI flags for automation: `--run` (headless, for Task Scheduler) · `--check` · `--setup`
 
 📖 **Full step-by-step guide (RU):** [INSTALL.md](INSTALL.md)
 

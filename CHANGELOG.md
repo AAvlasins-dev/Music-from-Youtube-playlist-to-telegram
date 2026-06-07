@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.5.0] — 2026-06-08
+
+### Added
+- **Interactive setup wizard** — on first launch (or `--setup`) the app guides
+  the user through entering the bot token, channel(s) and playlist(s), verifying
+  each one live (token via `getMe`, channel via `getChat`, playlist via yt-dlp),
+  then writes `.env` automatically. **No manual config-file editing required.**
+- **Menu-driven console app** — after setup, launching shows a menu:
+  Run now / Check / Reconfigure / Exit. Turns the bot into a real desktop app.
+- **`--run` flag** — headless run with no prompts, for Task Scheduler / cron.
+- **`--setup` flag** — force the setup wizard at any time.
+- Smart input parsing: full YouTube playlist URLs and `t.me/...` channel links
+  are accepted and normalised automatically (`_extract_playlist_id`,
+  `_normalise_handle`).
+- 9 new unit tests (46 → 55) for the wizard's parsing and `.env` writing.
+
+### Changed
+- Double-clicking the `.exe` now opens the wizard/menu instead of requiring a
+  pre-written `.env`.
+- Task Scheduler now uses `SpaceMusicHub.exe --run` (documented in INSTALL.md).
+- INSTALL.md rewritten around the wizard-first flow.
+
+---
+
 ## [1.4.0] — 2026-06-08
 
 ### Added

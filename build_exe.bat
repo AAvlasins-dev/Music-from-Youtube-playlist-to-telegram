@@ -10,8 +10,8 @@ REM  Output:
 REM      dist\SpaceMusicHub.exe   <- the executable
 REM
 REM  After building, ship dist\SpaceMusicHub.exe together with:
-REM      .env          (your configuration)
-REM      ffmpeg.exe    (audio conversion — optional, auto-detected)
+REM      ffmpeg.exe    (audio conversion — auto-detected next to the exe)
+REM  The .env is created automatically by the first-run setup wizard.
 REM ===========================================================================
 
 echo.

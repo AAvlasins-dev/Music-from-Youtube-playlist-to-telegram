@@ -31,6 +31,66 @@ REQUIRED_ENV = (
 
 
 # --------------------------------------------------------------------------- #
+# Setup-wizard helpers (pure parsing + .env writing)
+# --------------------------------------------------------------------------- #
+class TestExtractPlaylistId:
+    def test_full_url(self):
+        url = "https://www.youtube.com/playlist?list=PLabc123_-XYZ"
+        assert bot._extract_playlist_id(url) == "PLabc123_-XYZ"
+
+    def test_watch_url_with_list(self):
+        url = "https://www.youtube.com/watch?v=xyz&list=PLqwe456"
+        assert bot._extract_playlist_id(url) == "PLqwe456"
+
+    def test_bare_id_passes_through(self):
+        assert bot._extract_playlist_id("  PLrawId123  ") == "PLrawId123"
+
+
+class TestNormaliseHandle:
+    def test_plain_name(self):
+        assert bot._normalise_handle("music_ch") == "@music_ch"
+
+    def test_with_at(self):
+        assert bot._normalise_handle("@music_ch") == "@music_ch"
+
+    def test_tme_link(self):
+        assert bot._normalise_handle("https://t.me/music_ch") == "@music_ch"
+
+    def test_empty(self):
+        assert bot._normalise_handle("   ") == ""
+
+
+class TestWriteEnvFile:
+    def test_writes_token_and_channels(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bot, "_app_dir", lambda: str(tmp_path))
+        channels = [
+            ("music", "PL1", "@music_ch"),
+            ("baiba", "PL2", "baiba_ch"),
+        ]
+        bot._write_env_file("TOKEN123", channels, download_dir="C:\\Temp\\x")
+        content = (tmp_path / ".env").read_text(encoding="utf-8")
+        assert "TELEGRAM_BOT_TOKEN=TOKEN123" in content
+        assert "CHANNEL_1_PLAYLIST=PL1" in content
+        assert "CHANNEL_1_TELEGRAM=music_ch" in content  # @ stripped
+        assert "CHANNEL_2_NAME=baiba" in content
+        assert "DOWNLOAD_DIR=C:\\Temp\\x" in content
+
+    def test_written_env_is_loadable(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(bot, "_app_dir", lambda: str(tmp_path))
+        bot._write_env_file("TKN", [("music", "PLx", "@chan")])
+        # The numbered pair must be parseable back by _load_channels
+        _clear_channel_env(monkeypatch)
+        for line in (tmp_path / ".env").read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.startswith("#"):
+                key, _, val = line.partition("=")
+                monkeypatch.setenv(key.strip(), val.strip())
+        channels = bot._load_channels()
+        assert len(channels) == 1
+        assert channels[0].playlist_id == "PLx"
+        assert channels[0].channel_id == "chan"
+
+
+# --------------------------------------------------------------------------- #
 # JSON state helpers
 # --------------------------------------------------------------------------- #
 class TestJsonHelpers:
