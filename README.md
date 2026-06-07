@@ -2,9 +2,10 @@
 
 [![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
+![Status](https://img.shields.io/badge/status-production%20live-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![python-telegram-bot](https://img.shields.io/badge/python--telegram--bot-21.6-blue?logo=telegram)
-![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.1-red?logo=youtube)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-2026.3-red?logo=youtube)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -20,13 +21,16 @@
 
 ## 🇬🇧 English
 
-A Telegram bot that automatically downloads audio from YouTube playlists as MP3 files and publishes them to Telegram channels. Supports multiple playlist→channel pairs, auto-pins the latest post, and runs on a schedule via GitHub Actions — **no server required**.
+A Telegram bot that automatically downloads audio from YouTube playlists as MP3 files and publishes them to Telegram channels. Supports multiple playlist→channel pairs, auto-pins the latest post, and runs on a schedule.
+
+> **Live in production** — currently mirroring 1 000+ tracks to [@music_ebat_2026](https://t.me/music_ebat_2026) and [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Features
 
 | Feature | Description |
 |---|---|
 | 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real MP3 file |
+| 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH or via `ffmpeg-downloader` — no manual setup needed |
 | 🔗 YouTube link in caption | Each post includes the original YouTube link |
 | 📌 Auto-pinning | Unpins the previous post, pins the latest one automatically |
 | 💾 State persistence | Tracks posted videos in JSON files — never re-posts the same track |
@@ -35,7 +39,7 @@ A Telegram bot that automatically downloads audio from YouTube playlists as MP3 
 | 🔔 Admin notifications | Optional summary message to your own Telegram on each run |
 | 🐳 Docker-ready | Ships with `Dockerfile` and `docker-compose.yml` |
 | ⚙️ Fully configurable | All behaviour controlled via environment variables |
-| ☁️ Free hosting | Runs on GitHub Actions schedule — zero infrastructure cost |
+| 🪟 Windows-friendly | Handles non-ASCII paths; `run_bot.bat` for Task Scheduler |
 
 ### 🏗 Architecture
 
@@ -183,10 +187,11 @@ space-music-hub/
 | Package | Version | Purpose |
 |---|---|---|
 | `python-telegram-bot` | 21.6 | Telegram Bot API client |
-| `yt-dlp` | 2025.1.15 | YouTube playlist extraction + audio download |
+| `yt-dlp` | ≥ 2026.3 | YouTube playlist extraction + audio download |
 | `python-dotenv` | 1.0.1 | Load environment variables from `.env` |
+| `ffmpeg-downloader` | ≥ 1.1 | Auto-downloads a portable `ffmpeg` binary if not on PATH |
 
-> `ffmpeg` must be installed on the system (included automatically in the Docker image).
+> **ffmpeg** is detected automatically: PATH → `ffmpeg-downloader` bundle → explicit `FFMPEG_PATH` env var. In Docker it is installed by the `Dockerfile`. On Windows, install via `pip install ffmpeg-downloader && python -m ffmpeg_downloader install`.
 
 ### 📝 License
 
@@ -198,13 +203,16 @@ MIT — feel free to use and modify.
 
 ## 🇷🇺 Русский
 
-Telegram-бот, который автоматически скачивает аудио из YouTube-плейлистов в формате MP3 и публикует треки в Telegram-каналы. Поддерживает несколько пар плейлист→канал, автоматически закрепляет последний пост и запускается по расписанию через GitHub Actions — **сервер не нужен**.
+Telegram-бот, который автоматически скачивает аудио из YouTube-плейлистов в формате MP3 и публикует треки в Telegram-каналы. Поддерживает несколько пар плейлист→канал, автоматически закрепляет последний пост и запускается по расписанию.
+
+> **Работает в продакшне** — прямо сейчас зеркалирует 1 000+ треков в [@music_ebat_2026](https://t.me/music_ebat_2026) и [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Возможности
 
 | Функция | Описание |
 |---|---|
 | 🎵 Скачивание и отправка MP3 | Скачивает аудио через `yt-dlp` + `ffmpeg`, отправляет как настоящий MP3-файл |
+| 🔧 Авто-поиск ffmpeg | Находит `ffmpeg` в PATH или через `ffmpeg-downloader` — ручная настройка не нужна |
 | 🔗 Ссылка на YouTube в подписи | Каждый пост содержит оригинальную ссылку на YouTube |
 | 📌 Автозакрепление | Открепляет предыдущее сообщение, автоматически закрепляет новое |
 | 💾 Сохранение состояния | Отслеживает опубликованные видео — никогда не постит трек повторно |
@@ -213,7 +221,7 @@ Telegram-бот, который автоматически скачивает а
 | 🔔 Уведомления администратору | Опциональное итоговое сообщение в Telegram после каждого запуска |
 | 🐳 Docker-ready | `Dockerfile` + `docker-compose.yml` для развёртывания одной командой |
 | ⚙️ Полная настройка | Всё поведение управляется через переменные окружения |
-| ☁️ Бесплатный хостинг | Расписание GitHub Actions — нулевые расходы на инфраструктуру |
+| 🪟 Windows-friendly | Корректно работает с кириллическими путями; `run_bot.bat` для Task Scheduler |
 
 ### ⚠️ Ограничение GitHub Actions
 
@@ -299,10 +307,11 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 | Пакет | Версия | Назначение |
 |---|---|---|
 | `python-telegram-bot` | 21.6 | Клиент Telegram Bot API |
-| `yt-dlp` | 2025.1.15 | Извлечение плейлистов YouTube и скачивание аудио |
+| `yt-dlp` | ≥ 2026.3 | Извлечение плейлистов YouTube и скачивание аудио |
 | `python-dotenv` | 1.0.1 | Загрузка переменных окружения из `.env` |
+| `ffmpeg-downloader` | ≥ 1.1 | Автоматически скачивает портативный бинарник `ffmpeg` |
 
-> `ffmpeg` должен быть установлен в системе (в Docker-образе устанавливается автоматически).
+> **ffmpeg** определяется автоматически: PATH → пакет `ffmpeg-downloader` → явная переменная `FFMPEG_PATH`. В Docker устанавливается в `Dockerfile`. На Windows: `pip install ffmpeg-downloader && python -m ffmpeg_downloader install`.
 
 ### 📝 Лицензия
 
@@ -314,7 +323,9 @@ MIT — используй и модифицируй свободно.
 
 ## 🇱🇻 Latviešu
 
-Telegram bots, kas automātiski lejupielādē audio no YouTube atskaņošanas sarakstiem kā MP3 failus un publicē tos Telegram kanālos. Atbalsta vairākus pārus, automātiski piesprauž jaunāko ziņojumu un darbojas pēc grafika — **serveris nav nepieciešams**.
+Telegram bots, kas automātiski lejupielādē audio no YouTube atskaņošanas sarakstiem kā MP3 failus un publicē tos Telegram kanālos. Atbalsta vairākus pārus, automātiski piesprauž jaunāko ziņojumu un darbojas pēc grafika.
+
+> **Darbojas produkcijā** — pašlaik spoguļo 1 000+ dziesmas kanālos [@music_ebat_2026](https://t.me/music_ebat_2026) un [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Iespējas
 

@@ -20,6 +20,7 @@ import json
 import logging
 import logging.handlers
 import os
+import shutil
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +34,46 @@ from telegram import Bot, Message
 from telegram import error as tg_error
 
 load_dotenv()
+
+# ---------------------------------------------------------------------------
+# ffmpeg discovery — support system PATH and ffmpeg-downloader bundle
+# ---------------------------------------------------------------------------
+def _find_ffmpeg() -> str | None:
+    """Return the absolute path to an ffmpeg binary, or *None* if not found.
+
+    Search order:
+    1. ``FFMPEG_PATH`` environment variable (explicit override).
+    2. ``ffmpeg`` on the system PATH (resolved to an absolute path so that
+       yt-dlp can locate it regardless of the working directory at run time).
+    3. The binary bundled by *ffmpeg-downloader* (installed via
+       ``pip install ffmpeg-downloader && python -m ffmpeg_downloader install``).
+    """
+    # 1. Explicit override
+    env_path = os.getenv("FFMPEG_PATH")
+    if env_path and os.path.isfile(env_path):
+        return env_path
+
+    # 2. System PATH — always resolve to absolute so CWD doesn't matter
+    which = shutil.which("ffmpeg")
+    if which:
+        abs_which = os.path.abspath(which)
+        if os.path.isfile(abs_which):
+            return abs_which
+
+    # 3. ffmpeg-downloader bundle
+    try:
+        import ffmpeg_downloader as _ffd  # type: ignore[import]
+
+        bundled: str = str(_ffd.ffmpeg_path)
+        if os.path.isfile(bundled):
+            return bundled
+    except ImportError:
+        pass
+
+    return None
+
+
+_FFMPEG_PATH: str | None = _find_ffmpeg()
 
 __version__ = "1.3.0"
 __all__ = [
@@ -306,42 +347,53 @@ def _get_playlist_videos(playlist_id: str) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# yt-dlp: audio download → MP3
+# yt-dlp: audio download
 # ---------------------------------------------------------------------------
 @with_retry()
 def _download_audio(video_id: str) -> str:
-    """Download a YouTube video and convert it to a 192 kbps MP3 file.
+    """Download a YouTube video as the best available audio file.
+
+    Converts to MP3 (192 kbps) when ffmpeg is available; otherwise saves the
+    native m4a / webm container which Telegram accepts without conversion.
 
     Args:
         video_id: The YouTube video identifier (the ``v=`` URL parameter).
 
     Returns:
-        Absolute path to the resulting ``.mp3`` file.
+        Absolute path to the downloaded audio file.
 
     Raises:
-        FileNotFoundError: If ffmpeg did not produce the expected output file.
+        FileNotFoundError: If no audio file was produced after download.
     """
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     output_template = os.path.join(DOWNLOAD_DIR, f"{video_id}.%(ext)s")
-    ydl_opts = {
+
+    ydl_opts: dict[str, Any] = {
         **_YDL_COMMON,
-        "format": "bestaudio/best",
-        "postprocessors": [
+        "format": "bestaudio[ext=m4a]/bestaudio/best",
+        "outtmpl": output_template,
+    }
+
+    if _FFMPEG_PATH:
+        ydl_opts["ffmpeg_location"] = _FFMPEG_PATH
+        ydl_opts["postprocessors"] = [
             {
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": "mp3",
                 "preferredquality": "192",
             }
-        ],
-        "outtmpl": output_template,
-    }
+        ]
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
 
-    mp3_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
-    if not os.path.exists(mp3_path):
-        raise FileNotFoundError(f"MP3 not found after download: {mp3_path}")
-    return mp3_path
+    # Accept any extension yt-dlp may have written
+    for ext in ("mp3", "m4a", "webm", "opus", "ogg", "mp4"):
+        path = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
+        if os.path.exists(path):
+            return path
+
+    raise FileNotFoundError(f"No audio file found after download: {video_id}")
 
 
 # ---------------------------------------------------------------------------

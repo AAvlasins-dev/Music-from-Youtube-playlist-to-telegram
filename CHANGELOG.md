@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-06-07
+
+### Added
+- **ffmpeg auto-discovery** (`_find_ffmpeg`): checks `FFMPEG_PATH` env var → system PATH → `ffmpeg-downloader` bundle, so the bot works without any manual PATH setup
+- `ffmpeg-downloader` added to `requirements.txt` — installs a portable ffmpeg binary with a single `pip install`
+- `FFMPEG_PATH` env var for explicit ffmpeg override
+
+### Fixed
+- **`[Errno 22] Invalid argument`** on Windows: ffmpeg fails when the output path contains non-ASCII characters (Cyrillic, etc.). Fixed by defaulting `DOWNLOAD_DIR` to `C:\Temp\music_bot` and documenting that it must be an ASCII-only path
+- **Relative ffmpeg path** (`.\ffmpeg.EXE`) broke yt-dlp when the process was started from a different working directory. `_find_ffmpeg()` now always returns an absolute path
+- `yt-dlp` updated from `2025.1.15` → `2026.3.17` — resolves YouTube format-not-available errors on the current YouTube API
+
+### Changed
+- `_download_audio` gracefully falls back to native container (m4a/mp4) when ffmpeg is unavailable — Telegram accepts both formats
+- `DOWNLOAD_DIR` default changed from `downloads` (relative, may be Cyrillic) to `C:\Temp\music_bot`
+
+---
+
 ## [1.2.0] — 2026-06-06
 
 ### Changed
