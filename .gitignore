@@ -5,6 +5,9 @@
 sent_videos*.json
 pinned_msgs*.json
 
+# Single-instance lock file (created at runtime)
+bot.lock
+
 # Docker volume data directory
 data/
 
@@ -60,7 +63,7 @@ ffmpeg.exe
 
 # Local personal notes (not part of the project)
 Презентация и инструкция/
-Текстовый документ.txt
+Текстовый документ*.txt
 
 # Local Claude Code settings
 .claude/settings.local.json
