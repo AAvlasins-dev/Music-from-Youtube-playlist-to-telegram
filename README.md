@@ -21,9 +21,9 @@
 
 ## 🇬🇧 English
 
-A Telegram bot that automatically downloads audio from YouTube playlists as MP3 files and publishes them to Telegram channels. Supports multiple playlist→channel pairs, auto-pins the latest post, and runs on a schedule.
+Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-dlp + ffmpeg**, and posts it straight to your Telegram channel — with the original YouTube link in the caption and the latest track auto-pinned.
 
-> **Live in production** — currently mirroring 1 000+ tracks to [@music_ebat_2026](https://t.me/music_ebat_2026) and [@baiba_music](https://t.me/baiba_music).
+> 🟢 **Live in production** — currently mirroring 1 000+ tracks to [@music_ebat_2026](https://t.me/music_ebat_2026) and [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Features
 
@@ -43,36 +43,24 @@ A Telegram bot that automatically downloads audio from YouTube playlists as MP3 
 
 ### 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│              space-music-hub bot             │
-│                                             │
-│  ┌──────────────┐    ┌───────────────────┐  │
-│  │   YouTube    │───▶│  yt-dlp           │  │
-│  │  (playlist)  │    │  _get_playlist_   │  │
-│  └──────────────┘    │  videos()         │  │
-│                      └────────┬──────────┘  │
-│                               │             │
-│                     ┌─────────▼──────────┐  │
-│                     │  Filter new videos  │  │
-│                     │  (sent_videos.json) │  │
-│                     └─────────┬──────────┘  │
-│                               │             │
-│  ┌──────────────┐    ┌────────▼──────────┐  │
-│  │   YouTube    │───▶│  yt-dlp + ffmpeg  │  │
-│  │  (video URL) │    │  _download_audio()│  │
-│  └──────────────┘    └────────┬──────────┘  │
-│                               │             │
-│  ┌──────────────┐    ┌────────▼──────────┐  │
-│  │ Telegram API │◀───│  post_new_videos() │  │
-│  │  (Bot API)   │    │  + retry logic     │  │
-│  └──────────────┘    └─────────┬──────────┘ │
-│                               │             │
-│                     ┌─────────▼──────────┐  │
-│                     │  Save state +       │  │
-│                     │  pin latest message │  │
-│                     └────────────────────┘  │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A([▶ Scheduler\nTask Scheduler / cron]) --> B
+
+    subgraph BOT["🤖 space-music-hub bot"]
+        B[📋 Fetch playlist\nyt-dlp flat extract] --> C{New videos?}
+        C -- No --> Z([✅ Done — nothing to post])
+        C -- Yes --> D[🔍 Filter already-sent\nsent_videos_*.json]
+        D --> E[⬇️ Download audio\nyt-dlp + ffmpeg → MP3]
+        E --> F[📤 Send to Telegram\nbot.send_audio]
+        F --> G[📌 Pin latest message\nunpin previous]
+        G --> H[💾 Save state\nsent_videos_*.json\npinned_msgs_*.json]
+        H --> E
+    end
+
+    YT[(🎬 YouTube)] --> B
+    YT --> E
+    F --> TG[(📣 Telegram Channel)]
 ```
 
 ### ⚠️ GitHub Actions limitation
@@ -203,9 +191,9 @@ MIT — feel free to use and modify.
 
 ## 🇷🇺 Русский
 
-Telegram-бот, который автоматически скачивает аудио из YouTube-плейлистов в формате MP3 и публикует треки в Telegram-каналы. Поддерживает несколько пар плейлист→канал, автоматически закрепляет последний пост и запускается по расписанию.
+Следит за YouTube-плейлистами, скачивает каждый новый трек как MP3 192 kbps через **yt-dlp + ffmpeg** и отправляет прямо в Telegram-канал — со ссылкой на YouTube в подписи и автозакреплением последнего трека.
 
-> **Работает в продакшне** — прямо сейчас зеркалирует 1 000+ треков в [@music_ebat_2026](https://t.me/music_ebat_2026) и [@baiba_music](https://t.me/baiba_music).
+> 🟢 **Работает в продакшне** — прямо сейчас зеркалирует 1 000+ треков в [@music_ebat_2026](https://t.me/music_ebat_2026) и [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Возможности
 
@@ -323,9 +311,9 @@ MIT — используй и модифицируй свободно.
 
 ## 🇱🇻 Latviešu
 
-Telegram bots, kas automātiski lejupielādē audio no YouTube atskaņošanas sarakstiem kā MP3 failus un publicē tos Telegram kanālos. Atbalsta vairākus pārus, automātiski piesprauž jaunāko ziņojumu un darbojas pēc grafika.
+Seko YouTube atskaņošanas sarakstiem, lejupielādē katru jaunu dziesmu kā MP3 192 kbps ar **yt-dlp + ffmpeg** un publicē tieši Telegram kanālā — ar YouTube saiti parakstā un automātisku jaunākā ieraksta piespraušanu.
 
-> **Darbojas produkcijā** — pašlaik spoguļo 1 000+ dziesmas kanālos [@music_ebat_2026](https://t.me/music_ebat_2026) un [@baiba_music](https://t.me/baiba_music).
+> 🟢 **Darbojas produkcijā** — pašlaik spoguļo 1 000+ dziesmas kanālos [@music_ebat_2026](https://t.me/music_ebat_2026) un [@baiba_music](https://t.me/baiba_music).
 
 ### ✨ Iespējas
 
