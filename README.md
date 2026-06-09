@@ -227,7 +227,7 @@ space-music-hub/
 | Package | Version | Purpose |
 |---|---|---|
 | `python-telegram-bot` | 21.6 | Telegram Bot API client |
-| `yt-dlp` | ≥ 2026.3 | YouTube playlist extraction + audio download |
+| `yt-dlp` | latest | YouTube playlist extraction + audio download |
 | `python-dotenv` | 1.0.1 | Load environment variables from `.env` |
 | `ffmpeg-downloader` | ≥ 1.1 | Auto-downloads a portable `ffmpeg` binary if not on PATH |
 
@@ -354,7 +354,7 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 | Пакет | Версия | Назначение |
 |---|---|---|
 | `python-telegram-bot` | 21.6 | Клиент Telegram Bot API |
-| `yt-dlp` | ≥ 2026.3 | Извлечение плейлистов YouTube и скачивание аудио |
+| `yt-dlp` | latest | Извлечение плейлистов YouTube и скачивание аудио |
 | `python-dotenv` | 1.0.1 | Загрузка переменных окружения из `.env` |
 | `ffmpeg-downloader` | ≥ 1.1 | Автоматически скачивает портативный бинарник `ffmpeg` |
 
