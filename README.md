@@ -27,13 +27,13 @@ This repository shows the project's evolution from a simple script to a full des
 
 ## 🌐 Select Language · Выберите язык · Izvēlieties valodu
 
-[🇬🇧 English](#english) · [🇷🇺 Русский](#русский) · [🇱🇻 Latviešu](#latviešu)
+[English](#english) · [Русский](#русский) · [Latviešu](#latviešu)
 
 ---
 
 <a id="english"></a>
 
-## 🇬🇧 English
+## English
 
 Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-dlp + ffmpeg**, and posts it straight to your Telegram channel — with the original YouTube link in the caption and the latest track auto-pinned.
 
@@ -247,7 +247,7 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 <a id="русский"></a>
 
-## 🇷🇺 Русский
+## Русский
 
 Следит за YouTube-плейлистами, скачивает каждый новый трек как MP3 192 kbps через **yt-dlp + ffmpeg** и отправляет прямо в Telegram-канал — со ссылкой на YouTube в подписи и автозакреплением последнего трека.
 
@@ -374,7 +374,7 @@ royalty-free, либо приватные каналы). Полный текст
 
 <a id="latviešu"></a>
 
-## 🇱🇻 Latviešu
+## Latviešu
 
 Seko YouTube atskaņošanas sarakstiem, lejupielādē katru jaunu dziesmu kā MP3 192 kbps ar **yt-dlp + ffmpeg** un publicē tieši Telegram kanālā — ar YouTube saiti parakstā un automātisku jaunākā ieraksta piespraušanu.
 

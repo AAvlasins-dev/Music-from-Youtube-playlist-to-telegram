@@ -1,6 +1,6 @@
-# ⚖️ Disclaimer / Правовая оговорка
+# Disclaimer / Atruna / Правовая оговорка
 
-## 🇬🇧 English
+## English
 
 This project is an **educational portfolio project**. It is published to demonstrate
 software-engineering practices (clean code, tests, CI/CD, packaging, UX).
@@ -21,7 +21,29 @@ this source code.
 
 ---
 
-## 🇷🇺 Русский
+## Latviešu
+
+Šis projekts ir **izglītojošs portfolio projekts**. Tas ir publicēts, lai
+demonstrētu programmatūras izstrādes prasmes (tīrs kods, testi, CI/CD, iepakošana, UX).
+
+- Programmatūra ir **rīks**. Tā pati par sevi neuzglabā, nesatur un neizplata
+  nekādus ar autortiesībām aizsargātus materiālus.
+- **Jūs esat atbildīgs** par to, kā to izmantojat. Satura lejupielāde no YouTube
+  var pārkāpt YouTube lietošanas noteikumus, un ar autortiesībām aizsargātas mūzikas
+  izplatīšana publiskos kanālos var pārkāpt autortiesību likumu jūsu valstī.
+- Izmantojiet to tikai ar saturu, kuru jums ir tiesības lietot — saviem augšupielādēm,
+  publiska īpašuma vai Creative Commons / royalty-free mūziku, vai privātos
+  (ne-publiskos) kanālos.
+- Autors nodrošina šo programmatūru **"kā ir", bez jebkādas garantijas** un
+  neuzņemas **nekādu atbildību** par nepareizu lietošanu.
+
+Personīgai lietošanai un izglītības nolūkiem pirmkoda publicēšana ir likumīga.
+Juridiski riski rodas tikai aizsargāta satura publiskā izplatīšanā — no tā ir viegli
+izvairīties, izmantojot privātus kanālus vai brīvi pieejamu mūziku.
+
+---
+
+## Русский
 
 Этот проект — **образовательный проект для портфолио**. Он опубликован, чтобы
 продемонстрировать навыки разработки (чистый код, тесты, CI/CD, упаковку, UX).
