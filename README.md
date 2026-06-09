@@ -12,6 +12,19 @@
 
 ---
 
+## 🧬 Two editions of this project
+
+This repository shows the project's evolution from a simple script to a full desktop app:
+
+| Branch | Edition | What it is |
+|---|---|---|
+| [`v1-classic`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/tree/v1-classic) | **Classic** | The original Python script bot — `yt-dlp` + Telegram, run from the command line. Clean code, tests, CI, Docker. |
+| [`master`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram) | **App** (this one) | The evolution — a standalone Windows `.exe` with an interactive setup wizard and a menu-driven UI. No Python, no config files. |
+
+> The `master` edition grew out of `v1-classic`: same engine, evolved into a product anyone can install and use.
+
+---
+
 ## 🌐 Select Language · Выберите язык · Izvēlieties valodu
 
 [🇬🇧 English](#english) · [🇷🇺 Русский](#русский) · [🇱🇻 Latviešu](#latviešu)
@@ -205,7 +218,7 @@ space-music-hub/
 │       ├── bot.yml                 # Scheduled bot runner (daily)
 │       └── ci.yml                  # Lint + tests on every push
 └── tests/
-    └── test_bot.py                 # 46 unit tests (pytest)
+    └── test_bot.py                 # 55 unit tests (pytest)
 ```
 
 ### 📦 Dependencies
@@ -222,6 +235,13 @@ space-music-hub/
 ### 📝 License
 
 MIT — feel free to use and modify.
+
+### ⚖️ Disclaimer
+
+This is an **educational portfolio project**. The software is a tool and ships no
+copyrighted content. You are responsible for how you use it — use only content you
+have the rights to (your own uploads, Creative-Commons / royalty-free music, or
+private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
@@ -342,6 +362,13 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 ### 📝 Лицензия
 
 MIT — используй и модифицируй свободно.
+
+### ⚖️ Правовая оговорка
+
+Это **образовательный проект для портфолио**. Программа — это инструмент, она не
+содержит защищённого контента. Ответственность за использование несёт пользователь:
+используй только то, на что у тебя есть права (свои загрузки, музыка Creative Commons /
+royalty-free, либо приватные каналы). Полный текст: [DISCLAIMER.md](DISCLAIMER.md).
 
 ---
 
