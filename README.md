@@ -44,9 +44,10 @@ Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-
 
 | Feature | Description |
 |---|---|
-| 🧙 Interactive setup wizard | First-run wizard verifies token/channel/playlist live — zero config files |
+| 🧙 Guided setup wizard | Teaches the user to create the bot, get the playlist and link the channel — verified live, zero config files |
+| ▶️ Auto / watch mode | Leave the window open — new tracks are posted automatically every 15 min |
 | 📦 Standalone `.exe` | One-file Windows build — no Python required on the target PC |
-| 🖥️ Menu-driven app | Run / Check / Reconfigure from a console menu; `--run` for automation |
+| 🖥️ Menu-driven app | Start / Run once / Check / Reconfigure; `--watch` &amp; `--run` for automation |
 | 🔎 `--check` dry-run | Validate config + count new tracks without posting anything |
 | ♾️ Unlimited channels | Add channels in the wizard or via `CHANNEL_N_*` — no code changes |
 | 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real MP3 file |
@@ -115,13 +116,17 @@ Download the ZIP from the [**Releases**](https://github.com/AAvlasins-dev/Music-
 After setup, every launch shows a simple menu:
 
 ```text
-  1) Run now      - download & post new tracks
-  2) Check        - verify config, count new tracks (no posting)
-  3) Reconfigure  - run the setup wizard again
-  4) Exit
+  1) Start (auto)  - keep running; new tracks are posted automatically
+  2) Run once      - post new tracks and exit
+  3) Check         - verify config, count new tracks (no posting)
+  4) Reconfigure   - run the setup wizard again
+  5) Exit
 ```
 
-CLI flags for automation: `--run` (headless, for Task Scheduler) · `--check` · `--setup`
+**Auto mode** — pick option 1, leave the window open, and the app re-checks the
+playlist every 15 minutes, posting new tracks as they appear. No scheduler needed.
+
+CLI flags for automation: `--watch` (run forever) · `--run` (single, for Task Scheduler) · `--check` · `--setup`
 
 📖 **Full step-by-step guide (RU):** [INSTALL.md](INSTALL.md)
 

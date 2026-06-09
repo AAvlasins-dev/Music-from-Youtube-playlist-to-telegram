@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.6.0] — 2026-06-09
+
+### Added
+- **Fully guided setup wizard (Russian)** — the app now *teaches* a non-technical
+  user how to create a Telegram bot via @BotFather, make the channel public and add
+  the bot as admin, and copy a YouTube playlist link — each step explained on screen.
+- **Watch / auto mode** (`watch`, menu option 1, or `--watch`) — keeps running and
+  posts new tracks automatically every `WATCH_INTERVAL` seconds (default 15 min).
+  "Leave the window open and tracks keep arriving." Stops on Ctrl+C / window close.
+- **UTF-8 console setup** (`_setup_console`): `chcp 65001` + stream reconfigure so
+  Cyrillic renders correctly in the Windows console.
+- `WATCH_INTERVAL` env var to tune the auto-check period.
+
+### Changed
+- Interactive menu is now Russian and leads with the auto (watch) option:
+  Запустить (авто) / Запустить 1 раз / Проверка / Перенастроить / Выход.
+- First run ends by offering to start watching immediately.
+- A truly self-contained app: a non-technical person can set it up and run it
+  end-to-end without external instructions.
+
+---
+
 ## [1.5.0] — 2026-06-08
 
 ### Added

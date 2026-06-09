@@ -114,7 +114,7 @@ def _find_ffmpeg() -> str | None:
 
 _FFMPEG_PATH: str | None = _find_ffmpeg()
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 __all__ = [
     "ChannelConfig",
     "RunResult",
@@ -775,67 +775,112 @@ def _write_env_file(
         f.write("\n".join(lines))
 
 
-def setup_wizard() -> bool:
-    """Run the interactive first-time setup. Returns True if config was saved."""
-    print("\n" + "=" * 60)
-    print("  Space Music Hub  -  Setup Wizard")
-    print("=" * 60)
-    print("Detailed Russian guide: INSTALL.md (next to this app).")
-    print("Подробная инструкция на русском — файл INSTALL.md рядом.\n")
+def _line(ch: str = "=") -> None:
+    print(ch * 62)
 
-    # --- Step 1: bot token -------------------------------------------------
-    print("[1/3] Telegram bot token")
-    print("  In Telegram open @BotFather -> /newbot -> copy the API token.")
+
+def setup_wizard() -> bool:
+    """Run the guided first-time setup (RU). Returns True if config was saved."""
+    print()
+    _line()
+    print("  SPACE MUSIC HUB  —  Настройка (3 шага)")
+    _line()
+    print("Привет! Эта программа берёт музыку из твоего плейлиста YouTube")
+    print("и сама публикует её в твой Telegram-канал.")
+    print("Мастер всё объяснит по шагам — просто следуй подсказкам.\n")
+
+    # --- Шаг 1: бот --------------------------------------------------------
+    _line("-")
+    print("  ШАГ 1 из 3 — Создай своего Telegram-бота")
+    _line("-")
+    print("Бот — это помощник, которым управляет программа. Бесплатно, 1 минута:\n")
+    print("  1. Открой Telegram. В поиске сверху набери:   @BotFather")
+    print("  2. Открой его (с синей галочкой) и отправь:   /newbot")
+    print("  3. Придумай имя боту (любое, например: Моя Музыка)")
+    print("  4. Придумай логин боту — латиницей, в конце 'bot'")
+    print("       например:  moya_muzyka_2026_bot")
+    print("  5. BotFather пришлёт ТОКЕН — длинную строку вида:")
+    print("       8123456789:AAH-xxxxxxxxxxxxxxxxxxxxxxxxxxx")
+    print("  6. Скопируй токен и вставь сюда")
+    print("       (правый клик в этом окне = Вставить).\n")
     while True:
-        token = input("  Paste bot token (empty = cancel): ").strip()
+        token = input("  Вставь токен бота (пусто = отмена): ").strip()
         if not token:
-            print("  Setup cancelled.")
+            print("  Настройка отменена.")
             return False
-        print("  Checking token...")
+        print("  Проверяю токен...")
         username = asyncio.run(_verify_token(token))
         if username:
-            print(f"  OK - connected as @{username}\n")
+            print(f"  ОК — бот @{username} подключён.\n")
             break
-        print("  Invalid token. Try again.")
+        print("  Токен неверный. Скопируй заново у @BotFather и попробуй ещё раз.")
 
-    # --- Step 2: channels --------------------------------------------------
-    print("[2/3] Channels")
-    print("  First add the bot as Administrator in your channel")
-    print("  (Channel -> Administrators -> Add -> bot -> allow Post + Pin).")
+    # --- Шаг 2: канал ------------------------------------------------------
+    _line("-")
+    print("  ШАГ 2 из 3 — Твой Telegram-канал")
+    _line("-")
+    print("Сюда программа будет публиковать музыку.\n")
+    print("  1. Создай канал: меню Telegram -> Создать канал (или открой свой).")
+    print("  2. Сделай канал ПУБЛИЧНЫМ с именем (@...):")
+    print("       Управление каналом -> Тип канала -> Публичный -> задай ссылку.")
+    print("  3. Добавь своего бота в администраторы канала:")
+    print("       Управление каналом -> Администраторы -> Добавить ->")
+    print("       найди бота по его логину -> добавь.")
+    print("  4. Включи боту права: 'Публикация сообщений' и 'Закрепление'.\n")
     channels: list[tuple[str, str, str]] = []
     while True:
-        print(f"  -- Channel #{len(channels) + 1} --")
+        if channels:
+            print(f"  --- Канал #{len(channels) + 1} ---")
         handle = ""
         while not handle:
             handle = _normalise_handle(
-                input("  Telegram channel (@name or t.me/name): ")
+                input("  Имя канала (например @my_music): ")
             )
             if not handle:
-                print("  Please enter a channel.")
+                print("  Введи имя канала, например @my_music")
+        print("  Проверяю канал...")
         title = asyncio.run(_verify_channel(token, handle))
         if title:
-            print(f"  OK - found channel: {title}")
+            print(f"  ОК — канал найден: {title}")
         else:
-            print("  Note: can't reach it yet — make sure the bot is admin.")
-            print("  It will be saved anyway.")
+            print("  Внимание: канал пока не виден. Проверь, что бот добавлен")
+            print("  в администраторы и канал публичный. Сохраню как есть.")
+
+        # --- Шаг 3: плейлист ----------------------------------------------
+        print()
+        _line("-")
+        print("  ШАГ 3 из 3 — Твой плейлист YouTube")
+        _line("-")
+        print("Программа будет следить за этим плейлистом.\n")
+        print("  1. Открой YouTube, зайди в нужный плейлист")
+        print("       (свой плейлист или 'Понравившиеся').")
+        print("  2. Плейлист должен быть 'Открытый' или 'Доступ по ссылке'")
+        print("       (приватный программа прочитать не сможет).")
+        print("  3. Скопируй адрес из браузера — он выглядит так:")
+        print("       https://www.youtube.com/playlist?list=PLxxxxxxxx")
+        print("  4. Вставь сюда всю ссылку целиком.\n")
         playlist_id = _extract_playlist_id(
-            input("  YouTube playlist URL or ID: ")
+            input("  Вставь ссылку на плейлист: ")
         )
-        print("  Checking playlist...")
+        print("  Проверяю плейлист...")
         try:
             videos = _get_playlist_videos(playlist_id)
-            print(f"  OK - {len(videos)} tracks found")
+            print(f"  ОК — найдено треков: {len(videos)}")
         except Exception:  # noqa: BLE001
-            print("  Note: couldn't read the playlist — it will be saved anyway.")
+            print("  Внимание: не удалось прочитать плейлист. Сохраню как есть.")
         channels.append((handle.lstrip("@"), playlist_id, handle))
-        if input("  Add another channel? (y/N): ").strip().lower() not in ("y", "yes"):
-            break
 
-    # --- Step 3: save ------------------------------------------------------
-    print("\n[3/3] Saving configuration...")
+        print()
+        more = input("  Добавить ещё один канал? (да/нет): ").strip().lower()
+        if more not in ("д", "да", "y", "yes"):
+            break
+        print()
+
+    # --- сохранение --------------------------------------------------------
+    print("\nСохраняю настройки...")
     _write_env_file(token, channels)
-    print(f"  Saved: {_app_path('.env')}")
-    print("\nSetup complete!\n")
+    print(f"  Готово. Файл настроек: {_app_path('.env')}")
+    print("\n✓ Настройка завершена!\n")
     return True
 
 
@@ -856,8 +901,22 @@ def _pause_if_frozen() -> None:
     """Keep the console window open when launched as a double-clicked .exe."""
     if getattr(sys, "frozen", False):
         try:
-            input("\nPress Enter to close...")
+            input("\nНажми Enter, чтобы закрыть...")
         except (EOFError, KeyboardInterrupt):
+            pass
+
+
+def _setup_console() -> None:
+    """Make the Windows console render UTF-8 so Cyrillic text displays correctly."""
+    if os.name == "nt":
+        try:
+            os.system("chcp 65001 >nul 2>&1")
+        except Exception:  # noqa: BLE001
+            pass
+    for stream in (sys.stdout, sys.stderr, sys.stdin):
+        try:
+            stream.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+        except Exception:  # noqa: BLE001
             pass
 
 
@@ -900,48 +959,115 @@ def _do_check() -> int:
         asyncio.run(check())
     except OSError as exc:
         logger.error("Configuration error: %s", exc)
-        print(f"\n[X] {exc}\n\nRun setup again to fix it.")
+        print(f"\n[X] {exc}\n\nRU: запусти настройку заново (пункт меню).")
         return 1
     except Exception as exc:  # noqa: BLE001
         logger.exception("Check failed: %s", exc)
-        print(f"\n[X] Check failed: {exc}\nSee bot.log for details.")
+        print(f"\n[X] Ошибка проверки: {exc}\nПодробности в bot.log.")
         return 1
     return 0
+
+
+async def watch() -> None:
+    """Run forever: post new tracks, then re-check every WATCH_INTERVAL seconds.
+
+    This is the "leave it running" mode — while the window is open the program
+    keeps checking the playlist and posts new tracks automatically.
+    """
+    _validate_config()
+    interval = max(60, int(os.getenv("WATCH_INTERVAL", "900")))
+    mins = interval // 60
+    print()
+    print("Программа работает. ОСТАВЬ ЭТО ОКНО ОТКРЫТЫМ —")
+    print(f"новые треки проверяются каждые {mins} мин и сами уходят в канал.")
+    print("Чтобы остановить — закрой окно или нажми Ctrl+C.\n")
+    logger.info("Watch mode started (interval %d min).", mins)
+
+    cycle = 0
+    while True:
+        cycle += 1
+        posted = 0
+        for channel in CHANNELS:
+            result = await post_new_videos(channel)
+            posted += result.posted
+        logger.info(
+            "Cycle %d done — posted %d. Next check in %d min.", cycle, posted, mins
+        )
+        await asyncio.sleep(interval)
+
+
+def _do_watch() -> int:
+    """Run :func:`watch` under the single-instance lock until interrupted."""
+    lock_file = _app_path("bot.lock")
+    if os.path.exists(lock_file):
+        logger.error(
+            "Похоже, программа уже запущена (есть файл %s). "
+            "Если прошлый запуск завис — удали этот файл и попробуй снова.",
+            lock_file,
+        )
+        return 1
+
+    exit_code = 0
+    try:
+        with open(lock_file, "w") as lock_handle:
+            lock_handle.write(str(os.getpid()))
+        logger.info("=== space-music-hub watch v%s starting ===", __version__)
+        asyncio.run(watch())
+    except KeyboardInterrupt:
+        print("\nОстановлено. Пока!")
+    except OSError as exc:
+        logger.error("Configuration error: %s", exc)
+        print(f"\n[X] {exc}")
+        exit_code = 1
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error: %s", exc)
+        print(f"\n[X] Ошибка: {exc}\nПодробности в bot.log.")
+        exit_code = 1
+    finally:
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+    return exit_code
 
 
 def _interactive_menu() -> int:
     """Show the main menu for a double-clicked / terminal interactive session."""
     while True:
-        print("\n" + "=" * 60)
-        print("  Space Music Hub")
-        print("=" * 60)
-        print("  1) Run now      - download & post new tracks")
-        print("  2) Check        - verify config, count new tracks (no posting)")
-        print("  3) Reconfigure  - run the setup wizard again")
-        print("  4) Exit")
-        choice = input("  Choose (1-4): ").strip()
+        print()
+        _line()
+        print("  SPACE MUSIC HUB")
+        _line()
+        print("  1) Запустить (авто)  — следить и публиковать новые треки")
+        print("  2) Запустить 1 раз   — опубликовать новые и выйти")
+        print("  3) Проверка          — проверить настройки (без публикации)")
+        print("  4) Перенастроить     — пройти мастер заново")
+        print("  5) Выход")
+        choice = input("  Выбор (1-5): ").strip()
         if choice == "1":
-            return _do_run()
+            return _do_watch()
         if choice == "2":
+            return _do_run()
+        if choice == "3":
             _do_check()
-        elif choice == "3":
+        elif choice == "4":
             if setup_wizard():
                 _reload_config()
-        elif choice == "4":
+        elif choice == "5":
             return 0
-        elif choice != "2":
-            print("  Invalid choice, try again.")
+        else:
+            print("  Не понял выбор, попробуй ещё раз.")
 
 
 def _run_cli() -> int:
     """Console entry point. Returns a process exit code.
 
     Modes:
-      --run            headless run (used by Task Scheduler) — no prompts
+      --watch          run forever, post new tracks as they appear
+      --run            single headless run (used by Task Scheduler) — no prompts
       --check/--dry-run validate + count, no posting
       --setup          force the setup wizard
       (no args)        interactive: wizard on first run, otherwise a menu
     """
+    _setup_console()
     args = sys.argv[1:]
 
     if "--check" in args or "--dry-run" in args:
@@ -952,18 +1078,23 @@ def _run_cli() -> int:
         _pause_if_frozen()
         return 0 if ok else 1
 
+    if "--watch" in args:
+        return _do_watch()
+
     if "--run" in args:
-        # Headless mode — never blocks on input (safe for Task Scheduler / cron).
+        # Single headless run (safe for Task Scheduler / cron) — never prompts.
         return _do_run()
 
     # No arguments → interactive experience.
     if not os.getenv("TELEGRAM_BOT_TOKEN") or not CHANNELS:
-        # First run: nothing configured yet — launch the wizard.
+        # First run: nothing configured yet — launch the guided wizard.
         if setup_wizard():
             _reload_config()
-            answer = input("Run the bot now? (Y/n): ").strip().lower()
-            if answer in ("", "y", "yes"):
-                code = _do_run()
+            print("Всё настроено! Программа будет следить за плейлистом и сама")
+            print("публиковать новые треки, пока это окно открыто.")
+            answer = input("Запустить сейчас? (да/нет): ").strip().lower()
+            if answer in ("", "д", "да", "y", "yes"):
+                code = _do_watch()
                 _pause_if_frozen()
                 return code
         _pause_if_frozen()
