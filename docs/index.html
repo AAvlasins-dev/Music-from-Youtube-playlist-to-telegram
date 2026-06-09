@@ -121,16 +121,24 @@
   .disc{font-size:12.5px;max-width:580px;margin:14px auto 0;line-height:1.6;color:var(--muted)}
 
   /* PLAYER BAR */
-  .player{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(13,15,22,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
-  .player-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:11px 18px}
+  .player{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(13,15,22,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+  .player-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:13px;padding:10px 16px}
   .play-btn{flex:0 0 auto;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
        background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#fff;font-size:18px;box-shadow:0 8px 20px -8px rgba(239,106,51,.8);transition:transform .2s}
   .play-btn:hover{transform:scale(1.06)}
-  .ptitle{min-width:0}
-  .ptitle b{display:block;font-size:13.5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ptitle span{font-size:11.5px;color:var(--muted)}
-  .viz{flex:1;height:40px;min-width:60px}
-  @media(max-width:560px){.ptitle .lbl{display:none}}
+  .ptitle{min-width:110px;max-width:220px}
+  .ptitle b{display:block;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ptime{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .seek{flex:1;min-width:80px;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;cursor:pointer;
+        background-color:rgba(255,255,255,.16);
+        background-image:linear-gradient(var(--orange-2),var(--orange));background-repeat:no-repeat;background-size:0% 100%}
+  .seek::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(239,106,51,.6);cursor:pointer}
+  .seek::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(239,106,51,.6);cursor:pointer}
+  .dl-btn{flex:0 0 auto;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;text-decoration:none;
+       color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:17px;transition:background .2s,transform .2s}
+  .dl-btn:hover{background:rgba(239,106,51,.18);transform:translateY(-1px);color:#fff}
+  .viz{flex:0 0 auto;width:84px;height:36px}
+  @media(max-width:700px){.ptitle{display:none}.viz{display:none}}
 
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .26s ease,transform .26s ease}
   .reveal.in{opacity:1;transform:none}
@@ -314,14 +322,16 @@
 </footer>
 
 <!-- PLAYER -->
-<audio id="song" src="song.mp3" loop preload="none"></audio>
+<audio id="song" src="song.mp3" loop preload="metadata"></audio>
 <div class="player">
   <div class="player-in">
-    <button class="play-btn" id="playBtn" aria-label="Play">▶</button>
+    <button class="play-btn" id="playBtn" aria-label="Play / Pause">▶</button>
     <div class="ptitle">
       <b id="songTitle">Chrono Warden — Neon Ghosts in a Paper Town</b>
-      <span class="lbl" data-i18n="player.hint">▶ Press play — the equalizer reacts to the music</span>
+      <span class="ptime"><span id="cur">0:00</span> / <span id="dur">0:00</span></span>
     </div>
+    <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="Seek" />
+    <a class="dl-btn" id="dlBtn" href="song.mp3" download="Chrono Warden - Neon Ghosts in a Paper Town.mp3" title="Download" aria-label="Download">⬇</a>
     <canvas class="viz" id="viz"></canvas>
   </div>
 </div>
@@ -519,6 +529,20 @@ playBtn.addEventListener('click',async()=>{
 });
 audio.addEventListener('ended',()=>{ playing=false; playBtn.textContent='▶'; });
 audio.addEventListener('error',()=>{ document.getElementById('songTitle').textContent='♪ song.mp3 не загрузился / failed to load'; });
+
+// seek bar + time display
+const seek=document.getElementById('seek'), curEl=document.getElementById('cur'), durEl=document.getElementById('dur');
+let seeking=false;
+function fmt(t){ if(!isFinite(t)||t<0) return '0:00'; const m=Math.floor(t/60), s=Math.floor(t%60); return m+':'+(s<10?'0':'')+s; }
+function setFill(p){ seek.style.backgroundSize=(Math.max(0,Math.min(1,p))*100)+'% 100%'; }
+audio.addEventListener('loadedmetadata',()=>{ durEl.textContent=fmt(audio.duration); });
+audio.addEventListener('timeupdate',()=>{
+  if(seeking) return;
+  const p=audio.currentTime/(audio.duration||1);
+  seek.value=Math.round(p*1000); curEl.textContent=fmt(audio.currentTime); setFill(p);
+});
+seek.addEventListener('input',()=>{ seeking=true; const p=seek.value/1000; curEl.textContent=fmt(p*(audio.duration||0)); setFill(p); });
+seek.addEventListener('change',()=>{ const p=seek.value/1000; if(audio.duration) audio.currentTime=p*audio.duration; seeking=false; });
 </script>
 </body>
 </html>
