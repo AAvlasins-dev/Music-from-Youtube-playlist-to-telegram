@@ -1,4 +1,8 @@
-# 🚀 Space Music Hub
+# 🚀 Space Music Hub — Classic edition
+
+> 🧬 **This is the `v1-classic` branch** — the original command-line Python bot.
+> The project evolved into a standalone Windows app (interactive wizard + `.exe`)
+> on the [**`master` branch**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram).
 
 [![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
