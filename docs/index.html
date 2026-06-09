@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Space Music Hub — YouTube playlists → Telegram, as MP3</title>
+<link rel="icon" type="image/png" href="logo.png" />
 <meta name="description" content="A Telegram bot and standalone Windows app that mirrors YouTube playlists to Telegram channels as MP3. Interactive setup wizard, one-file .exe, tests, CI." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -55,6 +56,17 @@
   .brand{display:flex;align-items:center;gap:10px;font-family:"Sora";font-weight:800;font-size:18px}
   .logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
         background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#fff;font-size:16px}
+  .logo-img{width:34px;height:34px;border-radius:50%;object-fit:cover;
+            box-shadow:0 0 0 2px rgba(239,106,51,.55)}
+  /* developer signature card */
+  .sig{display:inline-flex;align-items:center;gap:15px;margin-top:8px;padding:14px 22px;
+       background:var(--card);border-radius:16px;color:var(--cream);box-shadow:var(--shadow)}
+  .sig img{width:56px;height:56px;border-radius:50%;object-fit:cover;
+           box-shadow:0 0 0 2px rgba(239,106,51,.6)}
+  .sig .who{text-align:left}
+  .sig .who b{font-family:"Sora";font-size:15px;display:block}
+  .sig .who span{color:var(--muted);font-size:12.5px}
+  .sig .who a{color:var(--orange-2);text-decoration:none;font-weight:600}
   .nav-links{display:flex;gap:8px;align-items:center}
   .nav-links a{font-size:14px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:8px 12px;border-radius:10px;transition:background .2s ease,color .2s ease}
   .nav-links a:hover{background:rgba(0,0,0,.05);color:var(--ink)}
@@ -150,7 +162,7 @@
 
 <nav>
   <div class="nav-in">
-    <div class="brand"><span class="logo">♪</span> Space Music Hub</div>
+    <div class="brand"><img class="logo-img" src="logo.png" alt="Chrono Warden" /> Space Music Hub</div>
     <div class="nav-links">
       <a class="hide-sm" href="#how">How it works</a>
       <a class="hide-sm" href="#wizard">Setup</a>
@@ -164,6 +176,7 @@
 
   <!-- HERO -->
   <header class="hero">
+    <img src="logo.png" alt="Chrono Warden" class="reveal" style="width:88px;height:88px;border-radius:50%;object-fit:cover;display:block;margin-bottom:22px;box-shadow:0 0 0 3px rgba(239,106,51,.5),0 18px 44px -16px rgba(0,0,0,.55)" />
     <span class="eyebrow reveal">● Live in production · 2 000+ tracks mirrored</span>
     <h1 class="reveal">Your YouTube playlists,<br><span class="o">streaming into Telegram.</span></h1>
     <p class="lead reveal">A Telegram bot <b>and</b> a standalone Windows app that watches YouTube playlists, downloads every new track as a 192&nbsp;kbps MP3, and posts it straight to your channel — automatically.</p>
@@ -330,7 +343,16 @@
 
 <footer>
   <div class="wrap">
-    <div class="brand" style="justify-content:center"><span class="logo">♪</span> Space Music Hub</div>
+    <div class="brand" style="justify-content:center"><img class="logo-img" src="logo.png" alt="Chrono Warden" /> Space Music Hub</div>
+    <div style="margin:22px 0">
+      <div class="sig">
+        <img src="logo.png" alt="Chrono Warden" />
+        <div class="who">
+          <b>Chrono Warden</b>
+          <span>Designed &amp; developed by · <a href="https://github.com/AAvlasins-dev" target="_blank" rel="noopener">github.com/AAvlasins-dev</a></span>
+        </div>
+      </div>
+    </div>
     <div class="links">
       <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener">Repository</a>
       <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener">Releases</a>
