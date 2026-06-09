@@ -229,7 +229,7 @@ space-music-hub/
 | `python-telegram-bot` | 21.6 | Telegram Bot API client |
 | `yt-dlp` | latest | YouTube playlist extraction + audio download |
 | `python-dotenv` | 1.0.1 | Load environment variables from `.env` |
-| `ffmpeg-downloader` | ≥ 1.1 | Auto-downloads a portable `ffmpeg` binary if not on PATH |
+| `ffmpeg-downloader` | ≥ 0.3 | Auto-downloads a portable `ffmpeg` binary if not on PATH |
 
 > **ffmpeg** is detected automatically: PATH → `ffmpeg-downloader` bundle → explicit `FFMPEG_PATH` env var. In Docker it is installed by the `Dockerfile`. On Windows, install via `pip install ffmpeg-downloader && python -m ffmpeg_downloader install`.
 
@@ -356,7 +356,7 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 | `python-telegram-bot` | 21.6 | Клиент Telegram Bot API |
 | `yt-dlp` | latest | Извлечение плейлистов YouTube и скачивание аудио |
 | `python-dotenv` | 1.0.1 | Загрузка переменных окружения из `.env` |
-| `ffmpeg-downloader` | ≥ 1.1 | Автоматически скачивает портативный бинарник `ffmpeg` |
+| `ffmpeg-downloader` | ≥ 0.3 | Автоматически скачивает портативный бинарник `ffmpeg` |
 
 > **ffmpeg** определяется автоматически: PATH → пакет `ffmpeg-downloader` → явная переменная `FFMPEG_PATH`. В Docker устанавливается в `Dockerfile`. На Windows: `pip install ffmpeg-downloader && python -m ffmpeg_downloader install`.
 
