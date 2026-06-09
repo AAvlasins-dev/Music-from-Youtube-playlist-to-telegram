@@ -467,43 +467,58 @@ else{ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){
 // audio + visualizer
 const audio=document.getElementById('song'), playBtn=document.getElementById('playBtn');
 const canvas=document.getElementById('viz'), cx=canvas.getContext('2d');
-let actx,analyser,data,started=false,playing=false,tick=0;
+let actx,analyser,data,vizReady=false,playing=false,tick=0;
 const NBARS=28;
-function sizeCanvas(){ const r=canvas.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; canvas.width=r.width*dpr; canvas.height=r.height*dpr; cx.setTransform(dpr,0,0,dpr,0,0); }
+function sizeCanvas(){ const r=canvas.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; canvas.width=Math.max(1,r.width*dpr); canvas.height=Math.max(1,r.height*dpr); cx.setTransform(dpr,0,0,dpr,0,0); }
 window.addEventListener('resize',sizeCanvas); sizeCanvas();
-function initAudio(){
-  if(started) return; started=true;
-  actx=new (window.AudioContext||window.webkitAudioContext)();
-  analyser=actx.createAnalyser(); analyser.fftSize=64;
-  const src=actx.createMediaElementSource(audio); src.connect(analyser); analyser.connect(actx.destination);
-  data=new Uint8Array(analyser.frequencyBinCount);
+
+// Best-effort visualizer. NEVER blocks playback — if Web Audio is unavailable
+// (e.g. opening the page from a local file://), the song still plays normally.
+function setupViz(){
+  if(vizReady) return;
+  try{
+    actx=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=actx.createAnalyser(); analyser.fftSize=64;
+    const src=actx.createMediaElementSource(audio);
+    src.connect(analyser); analyser.connect(actx.destination);
+    data=new Uint8Array(analyser.frequencyBinCount);
+    vizReady=true;
+  }catch(e){ vizReady=false; }   // audio element keeps its own output -> sound still plays
 }
 function draw(){
   requestAnimationFrame(draw); tick++;
   const w=canvas.clientWidth,h=canvas.clientHeight; cx.clearRect(0,0,w,h);
   const gap=3, bw=Math.max(2,(w-(NBARS-1)*gap)/NBARS);
-  if(analyser && playing) analyser.getByteFrequencyData(data);
+  if(vizReady && playing) analyser.getByteFrequencyData(data);
   for(let i=0;i<NBARS;i++){
     let v;
-    if(analyser && playing){ v=(data[i%data.length]/255); }
-    else { v=0.12+0.10*Math.abs(Math.sin(tick*0.05+i*0.5))*(1+0.4*Math.sin(i)); } // idle breathing
-    const bh=Math.max(3, v*h);
-    const x=i*(bw+gap), y=h-bh;
+    if(vizReady && playing){ v=data[i%data.length]/255; }
+    else { v=0.12+0.10*Math.abs(Math.sin(tick*0.05+i*0.5))*(1+0.4*Math.sin(i)); }
+    const bh=Math.max(3, v*h), x=i*(bw+gap), y=h-bh;
     const g=cx.createLinearGradient(0,y,0,h); g.addColorStop(0,'#f5894f'); g.addColorStop(1,'#ef6a33');
-    cx.fillStyle=g; cx.beginPath(); cx.roundRect(x,y,bw,bh,2); cx.fill();
+    cx.fillStyle=g; cx.beginPath();
+    if(cx.roundRect) cx.roundRect(x,y,bw,bh,2); else cx.rect(x,y,bw,bh);
+    cx.fill();
   }
 }
 if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches) draw();
+
 playBtn.addEventListener('click',async()=>{
-  try{
-    initAudio(); if(actx.state==='suspended') await actx.resume();
-    if(audio.paused){ await audio.play(); playing=true; playBtn.textContent='⏸'; }
-    else{ audio.pause(); playing=false; playBtn.textContent='▶'; }
-  }catch(e){
-    document.getElementById('songTitle').textContent='♪ song.mp3 — добавь файл / add file';
+  if(audio.paused){
+    try{
+      await audio.play();                 // 1) start sound first — guaranteed
+      playing=true; playBtn.textContent='⏸';
+      setupViz();                          // 2) attach equalizer (optional)
+      if(actx && actx.state==='suspended'){ try{ await actx.resume(); }catch(e){} }
+    }catch(e){
+      document.getElementById('songTitle').textContent='♪ не удалось воспроизвести / cannot play';
+    }
+  } else {
+    audio.pause(); playing=false; playBtn.textContent='▶';
   }
 });
-audio.addEventListener('ended',()=>playBtn.textContent='▶');
+audio.addEventListener('ended',()=>{ playing=false; playBtn.textContent='▶'; });
+audio.addEventListener('error',()=>{ document.getElementById('songTitle').textContent='♪ song.mp3 не загрузился / failed to load'; });
 </script>
 </body>
 </html>
