@@ -3,6 +3,7 @@
 [![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-production%20live-brightgreen)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-website-ef6a33?logo=github)](https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/)
 [![Windows .exe](https://img.shields.io/badge/Windows-.exe%20release-0078D6?logo=windows)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![python-telegram-bot](https://img.shields.io/badge/python--telegram--bot-21.6-blue?logo=telegram)
