@@ -3,7 +3,7 @@
 ;  Compile with:  "C:\Program Files (x86)\Inno Setup 6\iscc.exe" SpaceMusicHub.iss
 ; =====================================================================
 #define MyAppName          "Space Music Hub"
-#define MyAppVersion       "1.7.3"
+#define MyAppVersion       "1.7.4"
 #define MyAppPublisher     "Andrejs Avlasins"
 #define MyAppURL           "https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram"
 #define MyAppExeName       "SpaceMusicHub.exe"
@@ -53,10 +53,21 @@ MinVersion=10.0.17763
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "latvian"; MessagesFile: "Latvian.isl"
+
+[CustomMessages]
+; Tasks group header
+english.BackgroundMode=Background mode:
+russian.BackgroundMode=Фоновый режим:
+latvian.BackgroundMode=Fona režīms:
+; Autostart checkbox description
+english.AutoStartTask=Launch silently when Windows starts (system tray)
+russian.AutoStartTask=Запускать в трее при старте Windows
+latvian.AutoStartTask=Palaist klusi, kad sākas Windows (sistēmas teknē)
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
-Name: "autostart";   Description: "Launch {#MyAppName} silently when Windows starts (system tray)"; GroupDescription: "Background mode:"; Flags: unchecked
+Name: "autostart";   Description: "{cm:AutoStartTask}"; GroupDescription: "{cm:BackgroundMode}"; Flags: unchecked
 
 [Files]
 ; Whole PyInstaller folder, recursively
