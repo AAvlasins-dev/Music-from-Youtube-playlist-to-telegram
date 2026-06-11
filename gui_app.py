@@ -20,14 +20,13 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt6.QtCore import (
-    QRectF, QSize, QTimer, QThread, QUrl,
+    QSize, QTimer, QThread,
     Qt, pyqtSignal,
 )
 from PyQt6.QtGui import (
-    QBrush, QColor, QFont, QIcon, QImage, QLinearGradient,
+    QBrush, QColor, QFont, QIcon, QLinearGradient, QPixmap,
     QPainter, QPainterPath, QPen,
 )
-from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer, QVideoFrame, QVideoSink
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGraphicsDropShadowEffect,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
@@ -55,13 +54,16 @@ def _resource(name: str) -> Path:
     return BASE_DIR / name
 
 ENV_PATH   = BASE_DIR / ".env"
-LOGO_PATH  = _resource("logo.png")
-LOGO_ICO   = _resource("logo.ico")
+# Prefer the round (alpha-masked) versions; fall back to legacy square.
+LOGO_PATH  = _resource("logo_round.png") if _resource("logo_round.png").exists() else _resource("logo.png")
+LOGO_ICO   = _resource("logo_round.ico") if _resource("logo_round.ico").exists() else _resource("logo.ico")
 BOT_SCRIPT = BASE_DIR / "telegram_bot_music_youtube.py"
-VIDEO_PATHS = [
-    _resource("bg.mp4"),
-    BASE_DIR / "bg.mp4",
-    BASE_DIR / "docs" / "bg.mp4",
+# Static background image — replaces the heavy 4K video which was
+# pinning a CPU core on weaker machines.
+BG_IMAGE_PATHS = [
+    _resource("bg.jpg"),
+    BASE_DIR / "bg.jpg",
+    BASE_DIR / "docs" / "bg.jpg",
 ]
 
 # Bot's single-instance lock — bot writes this in _app_dir() while a
@@ -175,55 +177,41 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Video background  (plain Qt widget — painted via QVideoSink frames)
+#  Static background  (bg.jpg painted once per resize — zero CPU)
 # ══════════════════════════════════════════════════════════════════════
-class VideoBackgroundWidget(QWidget):
-    """Loops bg.mp4 as the window background.
+class StaticBackgroundWidget(QWidget):
+    """Paints a single still frame as the window background.
 
-    QVideoWidget can't be used here: on Windows it allocates a native
-    HWND surface that renders over every Qt widget, hiding our nav bar
-    and wizard. We render frames manually via QVideoSink so the video
-    is a regular Qt-painted widget that respects z-order.
+    Replaces the prior QVideoSink approach: the source clip is 4K at
+    30 fps, and CPU-scaling every frame down to ~1100 px wide pegged a
+    full core and could freeze weaker machines. The visual difference
+    is minimal (the original clip is essentially a slow wallpaper-like
+    loop), so we ship one frame and call it a day.
     """
 
-    def __init__(self, source_path: str, parent: QWidget | None = None) -> None:
+    def __init__(self, image_path: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._frame_image: QImage | None = None
+        self._source  = QPixmap(image_path)
+        self._scaled: QPixmap | None = None
 
-        self._sink   = QVideoSink(self)
-        self._audio  = QAudioOutput(self)
-        self._audio.setVolume(0.0)
-        self._player = QMediaPlayer(self)
-        self._player.setVideoSink(self._sink)
-        self._player.setAudioOutput(self._audio)
-        self._sink.videoFrameChanged.connect(self._on_frame)
-
-        self._player.setSource(QUrl.fromLocalFile(source_path))
-        self._player.setLoops(QMediaPlayer.Loops.Infinite)
-        self._player.play()
-
-    def _on_frame(self, frame: QVideoFrame) -> None:
-        if not frame.isValid():
+    def resizeEvent(self, _event) -> None:  # noqa: N802
+        if self._source.isNull():
             return
-        img = frame.toImage()
-        if img.isNull():
-            return
-        self._frame_image = img
+        self._scaled = self._source.scaled(
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
         self.update()
 
     def paintEvent(self, _event) -> None:  # noqa: N802
-        if self._frame_image is None:
+        if self._scaled is None or self._scaled.isNull():
             return
         p = QPainter(self)
-        # Letterbox-free: scale to fill window, preserving aspect ratio.
-        w, h = self.width(), self.height()
-        iw, ih = self._frame_image.width(), self._frame_image.height()
-        if iw <= 0 or ih <= 0:
-            return
-        scale = max(w / iw, h / ih)
-        sw, sh = iw * scale, ih * scale
-        x, y = (w - sw) / 2, (h - sh) / 2
-        p.drawImage(QRectF(x, y, sw, sh), self._frame_image)
+        # Centre the scaled pixmap (overflow trimmed by widget bounds).
+        x = (self.width()  - self._scaled.width())  // 2
+        y = (self.height() - self._scaled.height()) // 2
+        p.drawPixmap(x, y, self._scaled)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -955,12 +943,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         central.setStyleSheet(f"background: {BG};")
 
-        # Video layer (z=0) — pure-Qt painter widget, NOT QVideoWidget
-        video_src = next((vp for vp in VIDEO_PATHS if vp.exists()), None)
-        if video_src is not None:
-            self._vid_widget = VideoBackgroundWidget(str(video_src), central)
+        # Background layer (z=0) — static frame, no video decode
+        bg_src = next((p for p in BG_IMAGE_PATHS if p.exists()), None)
+        if bg_src is not None:
+            self._vid_widget = StaticBackgroundWidget(str(bg_src), central)
         else:
-            # No video bundled — fall back to a static dark widget
             self._vid_widget = QWidget(central)
             self._vid_widget.setStyleSheet(f"background: {BG};")
         self._vid_widget.setGeometry(0, 0, self.width(), self.height())

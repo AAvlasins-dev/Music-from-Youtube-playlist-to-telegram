@@ -3,11 +3,11 @@
 ;  Compile with:  "C:\Program Files (x86)\Inno Setup 6\iscc.exe" SpaceMusicHub.iss
 ; =====================================================================
 #define MyAppName          "Space Music Hub"
-#define MyAppVersion       "1.7.5"
+#define MyAppVersion       "1.7.6"
 #define MyAppPublisher     "Andrejs Avlasins"
 #define MyAppURL           "https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram"
 #define MyAppExeName       "SpaceMusicHub.exe"
-#define MyAppIcoName       "logo.ico"
+#define MyAppIcoName       "logo_round.ico"
 
 [Setup]
 ; SHA-1 of {#MyAppName + MyAppPublisher} — stable GUID for upgrade tracking.
@@ -30,7 +30,7 @@ AllowNoIcons=yes
 
 ; UI polish
 WizardStyle=modern
-SetupIconFile=..\docs\{#MyAppIcoName}
+SetupIconFile=..\docs\logo_round.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
 
@@ -74,10 +74,10 @@ Name: "autostart";   Description: "{cm:AutoStartTask}"; GroupDescription: "{cm:B
 Source: "SpaceMusicHub\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\{#MyAppIcoName}"; WorkingDir: "{app}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\logo_round.ico"; WorkingDir: "{app}"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\{#MyAppIcoName}"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{userstartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\{#MyAppIcoName}"; WorkingDir: "{app}"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\logo_round.ico"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userstartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\_internal\logo_round.ico"; WorkingDir: "{app}"
 
 [Registry]
 ; Auto-start via per-user Run key — only if the user checked the optional task
