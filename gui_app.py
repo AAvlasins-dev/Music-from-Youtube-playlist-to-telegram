@@ -248,9 +248,9 @@ LANGS: dict[str, dict[str, str]] = {
         "d.hint.check":   "только проверить настройки, ничего не качать",
         "d.hint.stop":    "остановить текущий процесс",
         "d.hint.config":  "поменять токен, каналы или плейлисты",
-        "d.stat.posted":  "ТРЕКОВ ОТПРАВЛЕНО",
+        "d.stat.posted":  "ОТПРАВЛЕНО",
         "d.stat.failed":  "ОШИБОК",
-        "d.stat.runs":    "ЗАПУСКОВ ЗА СЕССИЮ",
+        "d.stat.runs":    "ЗАПУСКОВ",
         "d.add.title":    "+ Добавить пару (канал + плейлист)",
         "d.add.note":     "Пара добавится в настройки. Если бот сейчас работает — нажми СТОП и СЛЕДИТЬ заново.",
         "d.add.btn":      "Добавить",
@@ -385,9 +385,9 @@ LANGS: dict[str, dict[str, str]] = {
         "d.hint.check":   "just verify config, don't download anything",
         "d.hint.stop":    "stop the current run",
         "d.hint.config":  "change token, channels or playlists",
-        "d.stat.posted":  "TRACKS POSTED",
+        "d.stat.posted":  "POSTED",
         "d.stat.failed":  "FAILED",
-        "d.stat.runs":    "SESSION RUNS",
+        "d.stat.runs":    "RUNS",
         "d.add.title":    "+ Add another channel + playlist pair",
         "d.add.note":     "Pair gets appended to your config. If the bot is running, hit STOP and WATCH again.",
         "d.add.btn":      "Add",
@@ -1727,10 +1727,15 @@ class DashboardPage(QWidget):
         lay.addWidget(self._progress)
 
         # ── stats cards ───────────────────────────────────────────────
-        stats_row = QHBoxLayout(); stats_row.setSpacing(10)
+        # Compact, content-sized cards centred as a group (Variant A) —
+        # the stretches on both ends keep them in the middle instead of
+        # letting them blanket the full width.
+        stats_row = QHBoxLayout(); stats_row.setSpacing(14)
+        stats_row.addStretch()
         self._n_posted,  self._lbl_posted  = self._stat_card(stats_row, CYAN)
         self._n_failed,  self._lbl_failed  = self._stat_card(stats_row, MAGENTA)
         self._n_session, self._lbl_session = self._stat_card(stats_row, PURPLE)
+        stats_row.addStretch()
         self._session_runs = 0
         lay.addLayout(stats_row)
 
@@ -1859,17 +1864,20 @@ class DashboardPage(QWidget):
     # ── stat card helper ──────────────────────────────────────────────
     def _stat_card(self, row: QHBoxLayout, color: str) -> tuple[QLabel, QLabel]:
         card = GlassCard()
-        card.setMinimumHeight(86)
+        # Fixed compact size so the three cards are equal and hug their
+        # content instead of stretching across the whole row.
+        card.setFixedSize(QSize(150, 80))
         cl = QVBoxLayout(card); cl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cl.setSpacing(4)
+        cl.setContentsMargins(8, 8, 8, 8)
+        cl.setSpacing(2)
         num = QLabel("0")
-        num.setFont(QFont("Segoe UI", 28, QFont.Weight.Bold))
+        num.setFont(QFont("Segoe UI", 26, QFont.Weight.Bold))
         num.setAlignment(Qt.AlignmentFlag.AlignCenter)
         num.setStyleSheet(f"color: {color};")
         lbl = QLabel("")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {WHITE}; font-size: 13px;"
-                          " font-weight: 600; letter-spacing: 2.5px;")
+        lbl.setStyleSheet(f"color: {WHITE}; font-size: 12px;"
+                          " font-weight: 600; letter-spacing: 1.5px;")
         cl.addWidget(num); cl.addWidget(lbl)
         row.addWidget(card)
         return num, lbl
