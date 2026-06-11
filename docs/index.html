@@ -1,548 +1,683 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Space Music Hub — YouTube → Telegram, as MP3</title>
-<link rel="icon" type="image/png" href="logo.png" />
-<meta name="description" content="A Telegram bot and standalone Windows app that mirrors YouTube playlists to Telegram channels as MP3. Guided wizard, one-file .exe, tests, CI." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/png" href="logo.png"/>
+<meta name="description" content="A Telegram bot and standalone Windows app that mirrors YouTube playlists to Telegram channels as MP3. Guided wizard, one-file .exe, tests, CI."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  :root{
-    --bg:#0e0f17; --bg2:#11131e; --ink:#ece4d6; --ink-soft:#aab0c2;
-    --card:#161926; --card2:#1d2130; --muted:#8c93a8;
-    --orange:#ef6a33; --orange-2:#f5894f; --cyan:#37c4e8;
-    --line:rgba(255,255,255,.08); --radius:22px;
-    --shadow:0 30px 60px -25px rgba(0,0,0,.7);
-  }
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{margin:0;font-family:"Inter",system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);
-       background:var(--bg);overflow-x:hidden;padding-bottom:78px}
-  /* animated background blobs + grid */
-  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-  .bg .blob{position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(80px);opacity:.5}
-  .bg .b1{background:radial-gradient(circle,rgba(239,106,51,.45),transparent 60%);top:-20%;left:-10%;animation:float1 18s ease-in-out infinite}
-  .bg .b2{background:radial-gradient(circle,rgba(55,196,232,.35),transparent 60%);bottom:-25%;right:-15%;animation:float2 22s ease-in-out infinite}
-  .bg .grid{position:absolute;inset:0;background-image:
-      linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
-      background-size:42px 42px;mask-image:radial-gradient(1100px 800px at 50% 0%,#000 30%,transparent 80%)}
-  @keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(8vw,6vh)}}
-  @keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-7vw,-5vh)}}
+:root{
+  --bg:#050505;
+  --cyan:#00d4ff;
+  --purple:#8b5cf6;
+  --magenta:#f72585;
+  --white:#f0f4ff;
+  --text:#8892a4;
+  --muted:#404258;
+  --border:rgba(255,255,255,.06);
+  --glass:rgba(255,255,255,.03);
+  --r:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--white);font-family:'Space Grotesk',system-ui,sans-serif;overflow-x:hidden;line-height:1.6}
 
-  .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 22px}
-  h1,h2,h3{font-family:"Sora",sans-serif;letter-spacing:-.02em;line-height:1.03;margin:0}
-  a{color:inherit}
-  .o{color:var(--orange-2)}
+/* VIDEO BACKGROUND */
+#bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.5;pointer-events:none}
+.bg-overlay{position:fixed;inset:0;z-index:1;background:linear-gradient(180deg,rgba(5,5,5,.55) 0%,rgba(5,5,5,.45) 50%,rgba(5,5,5,.7) 100%);pointer-events:none}
+#aurora{position:fixed;inset:0;z-index:2;pointer-events:none}
 
-  /* NAV */
-  nav{position:sticky;top:0;z-index:30;backdrop-filter:blur(12px);background:rgba(14,15,23,.7);border-bottom:1px solid var(--line)}
-  .nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;max-width:1080px;margin:0 auto}
-  .brand{display:flex;align-items:center;gap:10px;font-family:"Sora";font-weight:800;font-size:17px}
-  .logo-img{width:34px;height:34px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(239,106,51,.55)}
-  .nav-right{display:flex;align-items:center;gap:14px}
-  .nav-links{display:flex;gap:4px}
-  .nav-links a{font-size:14px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:8px 11px;border-radius:10px;transition:background .2s,color .2s}
-  .nav-links a:hover{background:rgba(255,255,255,.06);color:#fff}
-  @media(max-width:760px){.nav-links{display:none}}
-  .langs{display:flex;gap:3px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:3px}
-  .lang-btn{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12px;padding:5px 9px;border-radius:7px;cursor:pointer;transition:background .2s,color .2s}
-  .lang-btn.on{background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#fff}
+.wrap{position:relative;z-index:3;max-width:1160px;margin:0 auto;padding:0 28px}
+h1,h2,h3{font-family:'Syne',sans-serif;letter-spacing:-.03em;line-height:1}
+a{color:inherit;text-decoration:none}
 
-  /* HERO */
-  header.hero{padding:54px 0 24px;text-align:left}
-  .hero .logo-hero{width:92px;height:92px;border-radius:50%;object-fit:cover;display:block;margin-bottom:20px;
-       box-shadow:0 0 0 3px rgba(239,106,51,.5),0 18px 44px -14px rgba(0,0,0,.7)}
-  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:var(--orange-2);
-       background:rgba(239,106,51,.12);border:1px solid rgba(239,106,51,.3);padding:6px 12px;border-radius:999px}
-  .eyebrow .pulse{width:8px;height:8px;border-radius:50%;background:#3ad17f;box-shadow:0 0 0 0 rgba(58,209,127,.6);animation:pulse 1.8s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,209,127,.55)}70%{box-shadow:0 0 0 8px rgba(58,209,127,0)}100%{box-shadow:0 0 0 0 rgba(58,209,127,0)}}
-  .hero h1{font-size:clamp(40px,7.5vw,78px);font-weight:800;margin:18px 0 0}
-  .hero p.lead{font-size:clamp(16px,2.3vw,20px);color:var(--ink-soft);max-width:620px;margin:16px 0 0;line-height:1.55}
-  /* decorative equalizer */
-  .eq{display:flex;align-items:flex-end;gap:5px;height:42px;margin:24px 0 4px}
-  .eq span{width:7px;height:100%;border-radius:4px;background:linear-gradient(var(--orange-2),var(--orange));transform-origin:bottom;transform:scaleY(.3);animation:eq 1.1s ease-in-out infinite}
-  @keyframes eq{0%,100%{transform:scaleY(.22)}50%{transform:scaleY(1)}}
-  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
-  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:700;font-size:15px;text-decoration:none;padding:13px 20px;border-radius:14px;transition:transform .2s,box-shadow .2s,background .2s;cursor:pointer;border:0}
-  .btn:hover{transform:translateY(-2px)}
-  .btn-primary{background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#fff;box-shadow:0 14px 30px -12px rgba(239,106,51,.7)}
-  .btn-dark{background:#222637;color:#fff;border:1px solid var(--line)}
-  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  .stats{display:flex;gap:26px;flex-wrap:wrap;margin-top:30px}
-  .stat b{font-family:"Sora";font-weight:800;font-size:24px;display:block;color:#fff}
-  .stat span{font-size:13px;color:var(--muted)}
+/* LOGO */
+.logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(0,212,255,.4),0 0 16px rgba(0,212,255,.2)}
+.logo-hero{width:88px;height:88px;border-radius:50%;object-fit:cover;display:block;margin-bottom:28px;box-shadow:0 0 0 3px rgba(0,212,255,.4),0 0 40px rgba(0,212,255,.25),0 16px 40px rgba(0,0,0,.6)}
 
-  section.slide{margin:30px 0}
-  .card{position:relative;background:linear-gradient(180deg,var(--card),#12141f);border:1px solid var(--line);color:var(--ink);
-        border-radius:var(--radius);padding:34px;box-shadow:var(--shadow);overflow:hidden}
-  .card::after{content:"";position:absolute;right:-90px;top:-90px;width:240px;height:240px;border-radius:50%;
-        background:radial-gradient(circle at 30% 30%,rgba(239,106,51,.28),transparent 60%)}
-  .counter{position:absolute;top:18px;right:20px;font-family:"Sora";font-weight:700;font-size:13px;color:var(--muted);letter-spacing:.08em}
-  .bookmark{position:absolute;top:-2px;left:30px;width:26px;height:38px;background:var(--orange);clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%)}
-  .card h2{font-size:clamp(26px,4.4vw,40px);font-weight:800;margin-bottom:6px;color:#fff}
-  .card .sub{color:var(--muted);font-size:15px;max-width:560px;margin-top:8px}
-  .feats{display:grid;gap:14px;margin-top:26px}
-  .feat{display:flex;gap:14px;align-items:flex-start}
-  .ic{flex:0 0 auto;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:rgba(239,106,51,.14);border:1px solid rgba(239,106,51,.3)}
-  .feat .ft{font-weight:700;font-size:15.5px}
-  .feat .fd{color:var(--muted);font-size:14px;margin-top:2px;line-height:1.5}
-  .repo{display:inline-flex;align-items:center;gap:10px;background:#0c0e15;border:1px solid var(--line);color:#e8eaf0;border-radius:14px;padding:12px 14px;margin-top:24px;font-size:13px}
-  .repo .dot{width:10px;height:10px;border-radius:50%;background:#f1b04b}
-  .repo .star{margin-left:auto;color:#8a8f99;font-weight:600}
-  .term{background:#0a0c12;border:1px solid var(--line);border-radius:16px;margin-top:22px;overflow:hidden;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .term .bar{display:flex;gap:7px;padding:11px 14px;background:#0f1118;border-bottom:1px solid var(--line)}
-  .term .bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
-  .term pre{margin:0;padding:16px 18px;font-size:13px;line-height:1.65;color:#cdd3e0;white-space:pre-wrap}
-  .term .g{color:#5ad17f}.term .ob{color:var(--orange-2)}.term .m{color:#7f8aa3}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
-  .mini{background:var(--card2);border-radius:16px;padding:20px;border:1px solid var(--line)}
-  .mini h3{font-size:18px;font-weight:700;color:#fff}
-  .mini .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--orange-2);background:rgba(239,106,51,.12);padding:4px 9px;border-radius:7px;margin-bottom:10px}
-  .mini ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.7}
-  .pills{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
-  .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-size:13.5px;color:var(--ink)}
-  .pill span{color:var(--muted)}
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;transition:background .3s,backdrop-filter .3s}
+nav.scrolled{background:rgba(5,5,5,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.nav-in{max-width:1160px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.03)}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.04em}
+.brand-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:bdot 2s ease-in-out infinite;flex:0 0 auto}
+@keyframes bdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.75)}}
+.langs{display:flex;gap:2px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:4px}
+.lang-btn{border:0;background:transparent;color:var(--text);font-weight:600;font-size:11px;padding:6px 10px;border-radius:7px;cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;letter-spacing:.06em}
+.lang-btn.on{background:linear-gradient(135deg,var(--cyan),var(--purple));color:#fff}
 
-  footer{padding:48px 0 40px;text-align:center;color:var(--ink-soft)}
-  .sig{display:inline-flex;align-items:center;gap:15px;margin:8px 0 18px;padding:14px 22px;background:var(--card);border:1px solid var(--line);border-radius:16px}
-  .sig img{width:56px;height:56px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(239,106,51,.6)}
-  .sig .who{text-align:left}
-  .sig .who b{font-family:"Sora";font-size:15px;display:block;color:#fff}
-  .sig .who span{color:var(--muted);font-size:12.5px}
-  .sig .who a{color:var(--orange-2);text-decoration:none;font-weight:600}
-  footer .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:10px 0}
-  footer a{font-weight:600;text-decoration:none;color:var(--ink)}
-  footer a:hover{color:var(--orange-2)}
-  .disc{font-size:12.5px;max-width:580px;margin:14px auto 0;line-height:1.6;color:var(--muted)}
+/* HERO */
+.hero{position:relative;z-index:2;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:130px 0 90px}
+.hero-badge{display:inline-flex;align-items:center;gap:10px;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.05);padding:8px 16px;border-radius:999px;margin-bottom:36px;width:fit-content}
+.bdot2{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:bdot 1.5s ease-in-out infinite}
+.hero h1{font-size:clamp(54px,9.5vw,122px);font-weight:800;line-height:.93;letter-spacing:-.04em;margin-bottom:30px}
+.h1-line{display:block}
+.h1-glow{display:block;background:linear-gradient(100deg,var(--cyan) 0%,var(--purple) 50%,var(--magenta) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 50px rgba(0,212,255,.3))}
+.hero-lead{font-size:clamp(15px,1.8vw,18px);color:var(--text);max-width:520px;line-height:1.7;margin-bottom:44px;font-weight:400}
+.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:72px}
 
-  /* PLAYER BAR */
-  .player{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(13,15,22,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
-  .player-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:13px;padding:10px 16px}
-  .play-btn{flex:0 0 auto;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
-       background:linear-gradient(135deg,var(--orange),var(--orange-2));color:#fff;font-size:18px;box-shadow:0 8px 20px -8px rgba(239,106,51,.8);transition:transform .2s}
-  .play-btn:hover{transform:scale(1.06)}
-  .ptitle{min-width:110px;max-width:220px}
-  .ptitle b{display:block;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ptime{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .seek{flex:1;min-width:80px;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;cursor:pointer;
-        background-color:rgba(255,255,255,.16);
-        background-image:linear-gradient(var(--orange-2),var(--orange));background-repeat:no-repeat;background-size:0% 100%}
-  .seek::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(239,106,51,.6);cursor:pointer}
-  .seek::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(239,106,51,.6);cursor:pointer}
-  .dl-btn{flex:0 0 auto;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;text-decoration:none;
-       color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:17px;transition:background .2s,transform .2s}
-  .dl-btn:hover{background:rgba(239,106,51,.18);transform:translateY(-1px);color:#fff}
-  .viz{flex:0 0 auto;width:84px;height:36px}
-  @media(max-width:700px){.ptitle{display:none}.viz{display:none}}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;letter-spacing:.02em;padding:14px 26px;border-radius:12px;transition:all .3s cubic-bezier(.34,1.56,.64,1);cursor:pointer;border:0;text-decoration:none;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-3px)}
+.btn-primary{background:linear-gradient(135deg,var(--cyan),#0099bb);color:#030303;box-shadow:0 0 40px rgba(0,212,255,.35),0 6px 24px rgba(0,0,0,.5)}
+.btn-primary:hover{box-shadow:0 0 60px rgba(0,212,255,.55),0 10px 30px rgba(0,0,0,.5)}
+.btn-ghost{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--white);backdrop-filter:blur(10px)}
+.btn-ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
 
-  .reveal{opacity:0;transform:translateY(18px);transition:opacity .26s ease,transform .26s ease}
-  .reveal.in{opacity:1;transform:none}
-  @media(prefers-reduced-motion:reduce){
-    .reveal{opacity:1;transform:none;transition:none}
-    .eq span,.b1,.b2,.pulse{animation:none!important}
-    html{scroll-behavior:auto}
-  }
+/* HERO EQ */
+.eq-hero{display:flex;align-items:flex-end;gap:4px;height:72px;filter:drop-shadow(0 0 12px rgba(0,212,255,.8)) drop-shadow(0 0 4px rgba(139,92,246,.6));margin-bottom:8px}
+.eq-hero span{flex:0 0 10px;border-radius:3px 3px 0 0;background:linear-gradient(to top,var(--magenta),var(--purple),var(--cyan));transform-origin:bottom;animation:eqb 1.1s ease-in-out infinite;min-height:4px}
+@keyframes eqb{0%,100%{transform:scaleY(.15)}50%{transform:scaleY(1)}}
+
+/* SCROLL INDICATOR */
+.scroll-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);opacity:.7}
+.scroll-mouse{width:20px;height:32px;border:1.5px solid currentColor;border-radius:999px;position:relative}
+.scroll-mouse::after{content:'';position:absolute;width:3px;height:5px;border-radius:999px;background:currentColor;top:5px;left:50%;transform:translateX(-50%);animation:smouse 1.8s ease-in-out infinite}
+@keyframes smouse{0%{opacity:1;top:5px}100%{opacity:0;top:18px}}
+
+/* DIVIDER */
+.h-line{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent)}
+
+/* SECTION BASE */
+section{position:relative;z-index:3;padding:100px 0}
+.sec-label{font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+.glow-bar{display:block;width:60px;height:2px;border-radius:999px;margin-bottom:20px;box-shadow:0 0 10px rgba(0,212,255,.5)}
+.glow-bar-c{background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.glow-bar-p{background:linear-gradient(90deg,var(--purple),var(--magenta));box-shadow:0 0 10px rgba(139,92,246,.5)}
+.glow-bar-m{background:linear-gradient(90deg,var(--magenta),var(--purple));box-shadow:0 0 10px rgba(247,37,133,.5)}
+.glow-bar-y{background:linear-gradient(90deg,#f59e0b,var(--magenta));box-shadow:0 0 10px rgba(245,158,11,.5)}
+.sec-title{font-size:clamp(34px,5vw,64px);font-weight:800;line-height:1;letter-spacing:-.035em;margin-bottom:14px}
+.sec-sub{font-size:17px;color:var(--text);max-width:540px;line-height:1.65;margin-bottom:52px}
+.hl-c{color:var(--cyan)}
+.hl-p{background:linear-gradient(90deg,var(--purple),var(--magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hl-m{color:var(--magenta)}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:4px 0 16px;scrollbar-width:none}
+.pipeline::-webkit-scrollbar{display:none}
+.pipe-step{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;width:152px}
+.pipe-icon{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:24px;background:var(--glass);border:1px solid var(--border);margin-bottom:14px;transition:all .35s cubic-bezier(.34,1.2,.64,1)}
+.pipe-step:hover .pipe-icon{border-color:rgba(0,212,255,.35);box-shadow:0 0 28px rgba(0,212,255,.12);transform:translateY(-5px)}
+.pipe-lbl{font-size:12px;font-weight:700;color:var(--white);margin-bottom:5px;letter-spacing:.01em}
+.pipe-desc{font-size:11px;color:var(--text);line-height:1.45;padding:0 6px}
+.pipe-arrow{flex:1;min-width:24px;max-width:48px;height:1px;background:linear-gradient(90deg,rgba(0,212,255,.25),rgba(139,92,246,.25));position:relative;margin-top:30px}
+.pipe-arrow::after{content:'';position:absolute;right:-4px;top:-4px;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:7px solid rgba(139,92,246,.4)}
+
+/* FEATURE CARDS */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.feat-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:32px;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.34,1.1,.64,1);cursor:default}
+.feat-card::after{content:'';position:absolute;inset:-1px;border-radius:inherit;background:linear-gradient(135deg,rgba(0,212,255,.12),transparent 60%,rgba(139,92,246,.08));opacity:0;transition:opacity .4s;pointer-events:none}
+.feat-card:hover{border-color:rgba(0,212,255,.28);transform:translateY(-6px);box-shadow:0 30px 60px rgba(0,0,0,.5),0 0 40px rgba(0,212,255,.06)}
+.feat-card:hover::after{opacity:1}
+.feat-icon{font-size:30px;margin-bottom:18px;display:block}
+.feat-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:10px;color:var(--white)}
+.feat-desc{font-size:13.5px;color:var(--text);line-height:1.65}
+.feat-tag{display:inline-block;margin-top:16px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(0,212,255,.08);color:var(--cyan);border:1px solid rgba(0,212,255,.18)}
+
+/* TERMINAL */
+.term{background:#02020a;border:1px solid var(--border);border-radius:16px;margin-top:28px;overflow:hidden;font-family:ui-monospace,'Cascadia Code','Fira Code',monospace}
+.term-bar{display:flex;gap:7px;padding:12px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
+.term-bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.term pre{margin:0;padding:20px 22px;font-size:13px;line-height:1.85;color:#6a7590;white-space:pre-wrap}
+.tc{color:var(--cyan)}.tg{color:#34d399}.tm{color:var(--muted)}
+
+/* EDITIONS */
+.editions-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:680px){.editions-grid{grid-template-columns:1fr}}
+.edition-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:36px;transition:transform .3s}
+.edition-card.featured{border-color:rgba(139,92,246,.35);background:linear-gradient(155deg,rgba(139,92,246,.06),rgba(0,212,255,.03))}
+.edition-card:hover{transform:translateY(-4px)}
+.ed-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:16px}
+.edition-card.featured .ed-tag{background:rgba(139,92,246,.18);color:var(--purple);border:1px solid rgba(139,92,246,.28)}
+.edition-card:not(.featured) .ed-tag{background:rgba(255,255,255,.04);color:var(--text);border:1px solid var(--border)}
+.ed-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin-bottom:18px;color:var(--white)}
+.ed-list{list-style:none;display:flex;flex-direction:column;gap:11px}
+.ed-list li{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text)}
+.ed-list li::before{content:'';flex:0 0 5px;height:5px;border-radius:50%;background:var(--muted)}
+.edition-card.featured .ed-list li::before{background:var(--purple)}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:48px}
+.stat-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:36px 30px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;right:-50px;bottom:-50px;width:160px;height:160px;border-radius:50%;opacity:.1}
+.stat-card:nth-child(1)::after{background:var(--cyan)}
+.stat-card:nth-child(2)::after{background:var(--purple)}
+.stat-card:nth-child(3)::after{background:var(--magenta)}
+.stat-card:nth-child(4)::after{background:#f59e0b}
+.stat-num{font-family:'Syne',sans-serif;font-size:clamp(50px,6vw,76px);font-weight:800;line-height:1;letter-spacing:-.04em;display:block;margin-bottom:10px}
+.stat-card:nth-child(1) .stat-num{color:var(--cyan)}
+.stat-card:nth-child(2) .stat-num{color:var(--purple)}
+.stat-card:nth-child(3) .stat-num{color:var(--magenta)}
+.stat-card:nth-child(4) .stat-num{color:#f59e0b}
+.stat-label{font-size:13px;color:var(--text);font-weight:500;line-height:1.4}
+
+/* TECH PILLS */
+.tech-grid{display:flex;flex-wrap:wrap;gap:10px}
+.tech-pill{display:inline-flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--border);border-radius:999px;padding:10px 18px;font-size:13px;font-weight:500;color:var(--white);transition:all .3s;cursor:default}
+.tech-pill:hover{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.05);color:var(--cyan);transform:translateY(-2px)}
+.tech-pill .ti{font-size:15px}
+
+/* REPO BADGE */
+.repo-badge{display:inline-flex;align-items:center;gap:12px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:14px;padding:14px 20px;font-size:13px;margin-top:32px;transition:all .3s}
+.repo-badge:hover{border-color:rgba(0,212,255,.3);background:rgba(0,212,255,.04)}
+.repo-dot{width:9px;height:9px;border-radius:50%;background:#f59e0b;flex:0 0 auto}
+.repo-star{margin-left:auto;color:var(--text);font-weight:600}
+
+/* FINAL CTA */
+.cta-section{position:relative;z-index:3;padding:120px 0;text-align:center}
+.cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:350px;background:radial-gradient(ellipse,rgba(139,92,246,.13),transparent 70%);pointer-events:none}
+.cta-title{font-size:clamp(42px,7.5vw,100px);font-weight:800;line-height:.93;letter-spacing:-.04em;margin-bottom:24px}
+.cta-grad{background:linear-gradient(100deg,var(--cyan),var(--purple),var(--magenta));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cta-sub{font-size:17px;color:var(--text);max-width:460px;margin:0 auto 44px;line-height:1.65}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* FOOTER */
+footer{position:relative;z-index:3;padding:56px 0 40px;border-top:1px solid var(--border);text-align:center}
+.footer-brand{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:20px;color:var(--white)}
+.footer-links{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.footer-links a{font-size:13px;color:var(--text);font-weight:500;transition:color .2s}
+.footer-links a:hover{color:var(--cyan)}
+.footer-disc{font-size:12px;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.6}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* RESPONSIVE */
+@media(max-width:768px){section{padding:70px 0}.cta-section{padding:80px 0}}
+@media(max-width:560px){.wrap{padding:0 18px}.cta-row,.cta-btns{flex-direction:column}.btn{justify-content:center}.hero{padding:110px 0 70px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1!important;transform:none!important}}
 </style>
 </head>
 <body>
-<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="grid"></div></div>
 
-<nav>
+<video id="bg-video" autoplay muted loop playsinline>
+  <source src="bg.mp4" type="video/mp4">
+</video>
+<div class="bg-overlay"></div>
+<canvas id="aurora"></canvas>
+
+<nav id="nav">
   <div class="nav-in">
-    <div class="brand"><img class="logo-img" src="logo.png" alt="Chrono Warden" /> Space Music Hub</div>
-    <div class="nav-right">
-      <div class="nav-links">
-        <a href="#how" data-i18n="nav.how">How it works</a>
-        <a href="#wizard" data-i18n="nav.setup">Setup</a>
-        <a href="#editions" data-i18n="nav.editions">Editions</a>
-      </div>
-      <div class="langs">
-        <button class="lang-btn" data-lang="en">EN</button>
-        <button class="lang-btn" data-lang="lv">LV</button>
-        <button class="lang-btn" data-lang="ru">RU</button>
-      </div>
+    <div class="brand"><img class="logo-img" src="logo.png" alt="Space Music Hub"/> Space Music Hub</div>
+    <div class="langs">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="lv">LV</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
     </div>
   </div>
 </nav>
 
+<!-- HERO -->
 <div class="wrap">
-  <header class="hero">
-    <img src="logo.png" alt="Chrono Warden" class="logo-hero reveal" />
-    <span class="eyebrow reveal"><span class="pulse"></span> <span data-i18n="hero.badge">Live in production · 2 000+ tracks mirrored</span></span>
-    <h1 class="reveal" data-i18n-html="hero.title">Your YouTube playlists,<br><span class="o">streaming into Telegram.</span></h1>
-    <div class="eq reveal" id="heroEq"></div>
-    <p class="lead reveal" data-i18n="hero.lead">A Telegram bot and a standalone Windows app that watches YouTube playlists, downloads every new track as a 192 kbps MP3, and posts it straight to your channel — automatically.</p>
-    <div class="cta-row reveal">
+  <section class="hero">
+    <img class="logo-hero reveal" src="logo.png" alt="Space Music Hub"/>
+    <span class="hero-badge reveal" style="transition-delay:.04s">
+      <span class="bdot2"></span>
+      <span data-i18n="hero.badge">LIVE IN PRODUCTION · 2 000+ TRACKS MIRRORED</span>
+    </span>
+    <h1 class="reveal" style="transition-delay:.08s">
+      <span class="h1-line" data-i18n="hero.t1">YOUR PLAYLISTS,</span>
+      <span class="h1-glow" data-i18n="hero.t2">LIVE IN TELEGRAM.</span>
+    </h1>
+    <p class="hero-lead reveal" style="transition-delay:.16s" data-i18n="hero.lead">A Telegram bot and a standalone Windows app that watches YouTube playlists, downloads every new track as a 192 kbps MP3, and posts it straight to your channel — automatically.</p>
+    <div class="cta-row reveal" style="transition-delay:.24s">
       <a class="btn btn-primary" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener" data-i18n="hero.cta1">⬇ Download the .exe</a>
-      <a class="btn btn-dark" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="hero.cta2">★ View source</a>
-      <a class="btn btn-ghost" href="#how" data-i18n="hero.cta3">See how it works</a>
+      <a class="btn btn-ghost" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="hero.cta2">★ View Source</a>
     </div>
-    <div class="stats reveal">
-      <div class="stat"><b>55</b><span data-i18n="stat.tests">passing tests</span></div>
-      <div class="stat"><b>3</b><span data-i18n="stat.langs">languages</span></div>
-      <div class="stat"><b>0</b><span data-i18n="stat.config">config files to edit</span></div>
-      <div class="stat"><b>192k</b><span data-i18n="stat.bitrate">bitrate MP3</span></div>
-    </div>
-  </header>
-
-  <section class="slide" id="how"><div class="card reveal">
-    <div class="bookmark"></div><div class="counter">01 / 06</div>
-    <h2 data-i18n-html="s1.title">How it <span class="o">works</span></h2>
-    <p class="sub" data-i18n="s1.sub">A simple, reliable pipeline. Runs on a schedule, never posts the same track twice, and resumes exactly where it left off after any interruption.</p>
-    <div class="feats">
-      <div class="feat"><div class="ic">📋</div><div><div class="ft" data-i18n="s1.f1t">Fetch the playlist</div><div class="fd" data-i18n="s1.f1d">Reads every video via yt-dlp — no YouTube API key required.</div></div></div>
-      <div class="feat"><div class="ic">🔍</div><div><div class="ft" data-i18n="s1.f2t">Filter what's new</div><div class="fd" data-i18n="s1.f2d">Compares against per-channel state so already-posted tracks are skipped.</div></div></div>
-      <div class="feat"><div class="ic">🎵</div><div><div class="ft" data-i18n="s1.f3t">Download & convert</div><div class="fd" data-i18n="s1.f3d">yt-dlp + ffmpeg produce a real 192 kbps MP3 file.</div></div></div>
-      <div class="feat"><div class="ic">📤</div><div><div class="ft" data-i18n="s1.f4t">Post & pin</div><div class="fd" data-i18n="s1.f4d">Sends the audio to Telegram with the YouTube link, pins the latest track.</div></div></div>
-      <div class="feat"><div class="ic">💾</div><div><div class="ft" data-i18n="s1.f5t">Save state after every track</div><div class="fd" data-i18n="s1.f5d">A crash or restart resumes from the last success — never from scratch.</div></div></div>
-    </div>
-  </div></section>
-
-  <section class="slide" id="wizard"><div class="card reveal">
-    <div class="counter">02 / 06</div>
-    <h2 data-i18n-html="s2.title">A real app, <span class="o">not a config file</span></h2>
-    <p class="sub" data-i18n="s2.sub">Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.</p>
-    <div class="term">
-      <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
-      <pre>  <span class="ob">[1/3]</span> <span data-i18n="term.l1">Telegram bot token</span>
-        <span data-i18n="term.l2">paste token</span>  ...  <span class="g" data-i18n="term.l3">OK — connected</span>
-
-  <span class="ob">[2/3]</span> <span data-i18n="term.l4">Channels</span>
-        @your_channel    <span class="g" data-i18n="term.l5">OK — found</span>
-        playlist URL     <span class="g" data-i18n="term.l6">OK — 1055 tracks</span>
-
-  <span class="ob">[3/3]</span> <span data-i18n="term.l7">Saved</span>  ...  <span class="m" data-i18n="term.l8">Start now? (Y/n)</span></pre>
-    </div>
-    <div class="feats" style="margin-top:22px">
-      <div class="feat"><div class="ic">🧙</div><div><div class="ft" data-i18n="s2.f1t">Guided first run</div><div class="fd" data-i18n="s2.f1d">Token, channel and playlist are validated against the live APIs as you type.</div></div></div>
-      <div class="feat"><div class="ic">▶️</div><div><div class="ft" data-i18n="s2.f2t">Auto mode</div><div class="fd" data-i18n="s2.f2d">Leave the window open — new tracks are posted automatically every 15 min.</div></div></div>
-      <div class="feat"><div class="ic">♾️</div><div><div class="ft" data-i18n="s2.f3t">Unlimited channels</div><div class="fd" data-i18n="s2.f3d">Add as many playlist → channel pairs as you like, no code changes.</div></div></div>
-    </div>
-  </div></section>
-
-  <section class="slide" id="editions"><div class="card reveal">
-    <div class="counter">03 / 06</div>
-    <h2 data-i18n-html="s3.title">Two <span class="o">editions</span></h2>
-    <p class="sub" data-i18n="s3.sub">The project's evolution — from a clean command-line script to a packaged desktop product — lives in one repository.</p>
-    <div class="grid2" style="margin-top:24px">
-      <div class="mini">
-        <span class="tag">v1-classic</span><h3 data-i18n="s3.c1t">Classic script</h3>
-        <ul>
-          <li data-i18n="s3.c1a">Pure Python CLI bot</li>
-          <li data-i18n="s3.c1b">yt-dlp + Telegram engine</li>
-          <li data-i18n="s3.c1c">Tests, CI, Docker</li>
-          <li data-i18n="s3.c1d">For developers & servers</li>
-        </ul>
-      </div>
-      <div class="mini" style="border-color:rgba(239,106,51,.4)">
-        <span class="tag">master</span><h3 data-i18n="s3.c2t">Desktop app</h3>
-        <ul>
-          <li data-i18n="s3.c2a">One-file Windows .exe</li>
-          <li data-i18n="s3.c2b">Guided setup wizard</li>
-          <li data-i18n="s3.c2c">Menu-driven UI + auto mode</li>
-          <li data-i18n="s3.c2d">For everyone — no Python</li>
-        </ul>
-      </div>
-    </div>
-  </div></section>
-
-  <section class="slide"><div class="card reveal">
-    <div class="counter">04 / 06</div>
-    <h2 data-i18n-html="s4.title">Built like <span class="o">production software</span></h2>
-    <p class="sub" data-i18n="s4.sub">Not a throwaway script — engineered with the practices employers look for.</p>
-    <div class="feats">
-      <div class="feat"><div class="ic">✅</div><div><div class="ft" data-i18n="s4.f1t">55 unit tests + green CI</div><div class="fd" data-i18n="s4.f1d">Pure logic covered: posting loop, downloads, channel loading, retries.</div></div></div>
-      <div class="feat"><div class="ic">🧱</div><div><div class="ft" data-i18n="s4.f2t">Clean, typed code</div><div class="fd" data-i18n="s4.f2d">Dataclasses, full type hints, Google-style docstrings, Ruff-linted.</div></div></div>
-      <div class="feat"><div class="ic">🔁</div><div><div class="ft" data-i18n="s4.f3t">Resilient by design</div><div class="fd" data-i18n="s4.f3d">Exponential-backoff retries, single-instance lock, graceful ffmpeg fallback.</div></div></div>
-      <div class="feat"><div class="ic">🐳</div><div><div class="ft" data-i18n="s4.f4t">Ships everywhere</div><div class="fd" data-i18n="s4.f4d">Dockerfile, GitHub Actions, PyInstaller build, 3-language docs.</div></div></div>
-    </div>
-  </div></section>
-
-  <section class="slide"><div class="card reveal">
-    <div class="counter">05 / 06</div>
-    <h2 data-i18n-html="s5.title">Tech <span class="o">stack</span></h2>
-    <p class="sub" data-i18n="s5.sub">Lean, battle-tested tooling — every dependency earns its place.</p>
-    <div class="pills">
-      <div class="pill">🐍 Python 3.12</div><div class="pill">⬇ yt-dlp</div><div class="pill">🎬 ffmpeg</div>
-      <div class="pill">✈️ python-telegram-bot</div><div class="pill">📦 PyInstaller</div>
-      <div class="pill">🧪 pytest + ruff</div><div class="pill">🐳 Docker</div><div class="pill">⚙️ GitHub Actions</div>
-    </div>
-    <div class="repo"><span class="dot"></span><b>AAvlasins-dev / Music-from-Youtube-playlist-to-telegram</b><span class="star">★ public · MIT</span></div>
-  </div></section>
-
-  <section class="slide"><div class="card reveal">
-    <div class="counter">06 / 06</div>
-    <h2 data-i18n-html="s6.title">Get <span class="o">started</span></h2>
-    <p class="sub" data-i18n="s6.sub">Two ways in — pick the one that fits you.</p>
-    <div class="grid2" style="margin-top:24px">
-      <div class="mini">
-        <span class="tag" data-i18n="s6.c1tag">No Python</span><h3 data-i18n="s6.c1t">Download the app</h3>
-        <ul>
-          <li data-i18n="s6.c1a">Grab the ZIP from Releases</li>
-          <li data-i18n="s6.c1b">Unzip anywhere</li>
-          <li data-i18n="s6.c1c">Run SpaceMusicHub.exe</li>
-          <li data-i18n="s6.c1d">Follow the wizard</li>
-        </ul>
-        <a class="btn btn-primary" style="margin-top:16px" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener" data-i18n="s6.c1btn">⬇ Latest release</a>
-      </div>
-      <div class="mini">
-        <span class="tag" data-i18n="s6.c2tag">Developers</span><h3 data-i18n="s6.c2t">Run from source</h3>
-        <ul>
-          <li data-i18n="s6.c2a">Clone the repo</li>
-          <li>pip install -r requirements.txt</li>
-          <li>python telegram_bot_music_youtube.py</li>
-          <li data-i18n="s6.c2d">Or build with build_exe.bat</li>
-        </ul>
-        <a class="btn btn-dark" style="margin-top:16px" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="s6.c2btn">★ Source on GitHub</a>
-      </div>
-    </div>
-  </div></section>
+    <div class="eq-hero reveal" id="heroEq" style="transition-delay:.32s"></div>
+    <div class="scroll-hint"><div class="scroll-mouse"></div>SCROLL</div>
+  </section>
 </div>
+
+<div class="h-line"></div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s1.label">Pipeline</p>
+      <span class="glow-bar glow-bar-c"></span>
+      <h2 class="sec-title"><span data-i18n="s1.title.a">How it </span><span class="hl-c" data-i18n="s1.title.b">works</span></h2>
+      <p class="sec-sub" data-i18n="s1.sub">A simple, reliable pipeline. Runs on a schedule, never posts the same track twice, and resumes exactly where it left off after any interruption.</p>
+    </div>
+    <div class="pipeline reveal" style="transition-delay:.12s" id="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-icon">📋</div>
+        <div class="pipe-lbl" data-i18n="p1.l">Fetch Playlist</div>
+        <div class="pipe-desc" data-i18n="p1.d">yt-dlp reads every video. No API key needed.</div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-icon">🔍</div>
+        <div class="pipe-lbl" data-i18n="p2.l">Filter New</div>
+        <div class="pipe-desc" data-i18n="p2.d">Already-posted tracks are skipped.</div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-icon">🎵</div>
+        <div class="pipe-lbl" data-i18n="p3.l">Convert MP3</div>
+        <div class="pipe-desc" data-i18n="p3.d">Real 192 kbps audio via ffmpeg.</div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-icon">📤</div>
+        <div class="pipe-lbl" data-i18n="p4.l">Post & Pin</div>
+        <div class="pipe-desc" data-i18n="p4.d">Sends to Telegram + pins the latest.</div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-icon">💾</div>
+        <div class="pipe-lbl" data-i18n="p5.l">Save State</div>
+        <div class="pipe-desc" data-i18n="p5.d">Crash or restart? Resumes from last success.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s2.label">Features</p>
+      <span class="glow-bar glow-bar-p"></span>
+      <h2 class="sec-title"><span data-i18n="s2.title.a">Built for </span><span class="hl-p" data-i18n="s2.title.b">real use</span></h2>
+      <p class="sec-sub" data-i18n="s2.sub">Not a throwaway script — engineered with the practices employers look for.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card reveal" style="transition-delay:.05s">
+        <span class="feat-icon">🧙</span>
+        <div class="feat-title" data-i18n="f1.t">Guided First Run</div>
+        <div class="feat-desc" data-i18n="f1.d">Token, channel, and playlist are validated against live APIs as you type. No .env editing.</div>
+        <span class="feat-tag" data-i18n="f1.tag">UX</span>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.10s">
+        <span class="feat-icon">▶️</span>
+        <div class="feat-title" data-i18n="f2.t">Auto Mode</div>
+        <div class="feat-desc" data-i18n="f2.d">Leave the window open — new tracks are posted automatically every 15 minutes.</div>
+        <span class="feat-tag" data-i18n="f2.tag">Automation</span>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.15s">
+        <span class="feat-icon">♾️</span>
+        <div class="feat-title" data-i18n="f3.t">Unlimited Channels</div>
+        <div class="feat-desc" data-i18n="f3.d">Add as many playlist → channel pairs as you like, with no code changes.</div>
+        <span class="feat-tag" data-i18n="f3.tag">Scalable</span>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.20s">
+        <span class="feat-icon">✅</span>
+        <div class="feat-title" data-i18n="f4.t">55 Unit Tests + Green CI</div>
+        <div class="feat-desc" data-i18n="f4.d">Pure logic covered: posting loop, downloads, channel loading, retries.</div>
+        <span class="feat-tag" data-i18n="f4.tag">Quality</span>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.25s">
+        <span class="feat-icon">🔁</span>
+        <div class="feat-title" data-i18n="f5.t">Resilient by Design</div>
+        <div class="feat-desc" data-i18n="f5.d">Exponential-backoff retries, single-instance lock, graceful ffmpeg fallback.</div>
+        <span class="feat-tag" data-i18n="f5.tag">Reliability</span>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.30s">
+        <span class="feat-icon">🐳</span>
+        <div class="feat-title" data-i18n="f6.t">Ships Everywhere</div>
+        <div class="feat-desc" data-i18n="f6.d">Dockerfile, GitHub Actions, PyInstaller .exe build, 3-language docs.</div>
+        <span class="feat-tag" data-i18n="f6.tag">DevOps</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- SETUP -->
+<section id="setup">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s3.label">Setup</p>
+      <span class="glow-bar glow-bar-c"></span>
+      <h2 class="sec-title"><span data-i18n="s3.title.a">A real app, </span><span style="color:var(--purple)" data-i18n="s3.title.b">not a config file</span></h2>
+      <p class="sec-sub" data-i18n="s3.sub">Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.</p>
+    </div>
+    <div class="term reveal" style="transition-delay:.1s">
+      <div class="term-bar">
+        <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+      </div>
+      <pre>  <span class="tc">[1/3]</span> <span data-i18n="tl1">Telegram bot token</span>
+        <span data-i18n="tl2">paste token</span>  ...  <span class="tg" data-i18n="tl3">OK — connected</span>
+
+  <span class="tc">[2/3]</span> <span data-i18n="tl4">Channels</span>
+        @your_channel    <span class="tg" data-i18n="tl5">OK — found</span>
+        playlist URL     <span class="tg" data-i18n="tl6">OK — 1055 tracks</span>
+
+  <span class="tc">[3/3]</span> <span data-i18n="tl7">Saved</span>  ...  <span class="tm" data-i18n="tl8">Start now? (Y/n)</span></pre>
+    </div>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- EDITIONS -->
+<section id="editions">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s4.label">Editions</p>
+      <span class="glow-bar glow-bar-m"></span>
+      <h2 class="sec-title"><span data-i18n="s4.title.a">Two </span><span class="hl-m" data-i18n="s4.title.b">editions</span></h2>
+      <p class="sec-sub" data-i18n="s4.sub">The project's evolution — from a CLI script to a packaged desktop product — lives in one repository.</p>
+    </div>
+    <div class="editions-grid">
+      <div class="edition-card reveal" style="transition-delay:.06s">
+        <span class="ed-tag">v1-classic</span>
+        <div class="ed-title" data-i18n="e1.t">Classic Script</div>
+        <ul class="ed-list">
+          <li data-i18n="e1.a">Pure Python CLI bot</li>
+          <li data-i18n="e1.b">yt-dlp + Telegram engine</li>
+          <li data-i18n="e1.c">Tests, CI, Docker</li>
+          <li data-i18n="e1.d">For developers &amp; servers</li>
+        </ul>
+      </div>
+      <div class="edition-card featured reveal" style="transition-delay:.12s">
+        <span class="ed-tag">master · featured</span>
+        <div class="ed-title" data-i18n="e2.t">Desktop App</div>
+        <ul class="ed-list">
+          <li data-i18n="e2.a">One-file Windows .exe</li>
+          <li data-i18n="e2.b">Guided setup wizard</li>
+          <li data-i18n="e2.c">Menu-driven UI + auto mode</li>
+          <li data-i18n="e2.d">For everyone — no Python</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s5.label">By the numbers</p>
+      <span class="glow-bar glow-bar-y"></span>
+      <h2 class="sec-title" data-i18n="s5.title">Results that speak</h2>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card reveal" style="transition-delay:.05s">
+        <span class="stat-num" data-count="2000" data-suffix="+">0</span>
+        <span class="stat-label" data-i18n="st1">tracks mirrored in production</span>
+      </div>
+      <div class="stat-card reveal" style="transition-delay:.10s">
+        <span class="stat-num" data-count="55">0</span>
+        <span class="stat-label" data-i18n="st2">unit tests — all green</span>
+      </div>
+      <div class="stat-card reveal" style="transition-delay:.15s">
+        <span class="stat-num" data-count="3">0</span>
+        <span class="stat-label" data-i18n="st3">interface languages</span>
+      </div>
+      <div class="stat-card reveal" style="transition-delay:.20s">
+        <span class="stat-num" data-count="0">0</span>
+        <span class="stat-label" data-i18n="st4">config files to edit manually</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- TECH -->
+<section id="tech">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="s6.label">Tech Stack</p>
+      <span class="glow-bar glow-bar-c"></span>
+      <h2 class="sec-title"><span data-i18n="s6.title.a">Lean, </span><span class="hl-c" data-i18n="s6.title.b">battle-tested</span><span data-i18n="s6.title.c"> tooling</span></h2>
+      <p class="sec-sub" data-i18n="s6.sub">Every dependency earns its place.</p>
+    </div>
+    <div class="tech-grid reveal" style="transition-delay:.1s">
+      <div class="tech-pill"><span class="ti">🐍</span> Python 3.12</div>
+      <div class="tech-pill"><span class="ti">⬇</span> yt-dlp</div>
+      <div class="tech-pill"><span class="ti">🎬</span> ffmpeg</div>
+      <div class="tech-pill"><span class="ti">✈️</span> python-telegram-bot</div>
+      <div class="tech-pill"><span class="ti">📦</span> PyInstaller</div>
+      <div class="tech-pill"><span class="ti">🧪</span> pytest + ruff</div>
+      <div class="tech-pill"><span class="ti">🐳</span> Docker</div>
+      <div class="tech-pill"><span class="ti">⚙️</span> GitHub Actions</div>
+    </div>
+    <a class="repo-badge reveal" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" style="transition-delay:.15s">
+      <span class="repo-dot"></span>
+      <b>AAvlasins-dev / Music-from-Youtube-playlist-to-telegram</b>
+      <span class="repo-star">★ public · MIT</span>
+    </a>
+  </div>
+</section>
+
+<div class="h-line"></div>
+
+<!-- FINAL CTA -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="wrap" style="position:relative;z-index:2">
+    <div class="reveal">
+      <p class="sec-label" data-i18n="cta.label">Get started</p>
+      <h2 class="cta-title">
+        <span data-i18n="cta.t1">Ready to </span><span class="cta-grad" data-i18n="cta.t2">automate</span><br><span data-i18n="cta.t3">your music?</span>
+      </h2>
+      <p class="cta-sub" data-i18n="cta.sub">Two ways in — pick the one that fits you. Works for developers and non-technical users alike.</p>
+      <div class="cta-btns">
+        <a class="btn btn-primary" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener" data-i18n="cta.btn1">⬇ Download the .exe</a>
+        <a class="btn btn-ghost" href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="cta.btn2">★ View Source on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap">
-    <div class="sig">
-      <img src="logo.png" alt="Chrono Warden" />
-      <div class="who"><b>Chrono Warden</b><span data-i18n="footer.by">Designed & developed by</span> · <a href="https://github.com/AAvlasins-dev" target="_blank" rel="noopener">github.com/AAvlasins-dev</a></div>
+    <div class="footer-brand">Space Music Hub</div>
+    <div class="footer-links">
+      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="ft.repo">Repository</a>
+      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener" data-i18n="ft.rel">Releases</a>
+      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/blob/master/INSTALL.md" target="_blank" rel="noopener" data-i18n="ft.guide">Install guide</a>
+      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/blob/master/DISCLAIMER.md" target="_blank" rel="noopener" data-i18n="ft.disc">Disclaimer</a>
+      <a href="https://github.com/AAvlasins-dev" target="_blank" rel="noopener">github.com/AAvlasins-dev</a>
     </div>
-    <div class="links">
-      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram" target="_blank" rel="noopener" data-i18n="footer.repo">Repository</a>
-      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest" target="_blank" rel="noopener" data-i18n="footer.rel">Releases</a>
-      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/blob/master/INSTALL.md" target="_blank" rel="noopener" data-i18n="footer.guide">Install guide</a>
-      <a href="https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/blob/master/DISCLAIMER.md" target="_blank" rel="noopener" data-i18n="footer.disc">Disclaimer</a>
-    </div>
-    <p class="disc" data-i18n="footer.note">Educational / portfolio project. The software is a tool and ships no copyrighted content — use only material you have the right to use.</p>
-    <p class="disc" data-i18n="footer.song" style="color:var(--orange-2)">♪ Soundtrack “Neon Ghosts in a Paper Town” — original concept by Chrono Warden, AI-generated in the style of Depeche Mode.</p>
+    <p class="footer-disc" data-i18n="ft.note">Educational / portfolio project. The software is a tool and ships no copyrighted content — use only material you have the right to use.</p>
   </div>
 </footer>
 
-<!-- PLAYER -->
-<audio id="song" src="song.mp3" loop preload="metadata"></audio>
-<div class="player">
-  <div class="player-in">
-    <button class="play-btn" id="playBtn" aria-label="Play / Pause">▶</button>
-    <div class="ptitle">
-      <b id="songTitle">Chrono Warden — Neon Ghosts in a Paper Town</b>
-      <span class="ptime"><span id="cur">0:00</span> / <span id="dur">0:00</span></span>
-    </div>
-    <input type="range" id="seek" class="seek" min="0" max="1000" value="0" step="1" aria-label="Seek" />
-    <a class="dl-btn" id="dlBtn" href="song.mp3" download="Chrono Warden - Neon Ghosts in a Paper Town.mp3" title="Download" aria-label="Download">⬇</a>
-    <canvas class="viz" id="viz"></canvas>
-  </div>
-</div>
-
 <script>
-const I18N = {
+const I18N={
   en:{
-    "nav.how":"How it works","nav.setup":"Setup","nav.editions":"Editions",
-    "hero.badge":"Live in production · 2 000+ tracks mirrored",
-    "hero.title":"Your YouTube playlists,<br><span class='o'>streaming into Telegram.</span>",
+    "hero.badge":"LIVE IN PRODUCTION · 2 000+ TRACKS MIRRORED",
+    "hero.t1":"YOUR PLAYLISTS,","hero.t2":"LIVE IN TELEGRAM.",
     "hero.lead":"A Telegram bot and a standalone Windows app that watches YouTube playlists, downloads every new track as a 192 kbps MP3, and posts it straight to your channel — automatically.",
-    "hero.cta1":"⬇ Download the .exe","hero.cta2":"★ View source","hero.cta3":"See how it works",
-    "stat.tests":"passing tests","stat.langs":"languages","stat.config":"config files to edit","stat.bitrate":"bitrate MP3",
-    "s1.title":"How it <span class='o'>works</span>","s1.sub":"A simple, reliable pipeline. Runs on a schedule, never posts the same track twice, and resumes exactly where it left off after any interruption.",
-    "s1.f1t":"Fetch the playlist","s1.f1d":"Reads every video via yt-dlp — no YouTube API key required.",
-    "s1.f2t":"Filter what's new","s1.f2d":"Compares against per-channel state so already-posted tracks are skipped.",
-    "s1.f3t":"Download & convert","s1.f3d":"yt-dlp + ffmpeg produce a real 192 kbps MP3 file.",
-    "s1.f4t":"Post & pin","s1.f4d":"Sends the audio to Telegram with the YouTube link, pins the latest track.",
-    "s1.f5t":"Save state after every track","s1.f5d":"A crash or restart resumes from the last success — never from scratch.",
-    "s2.title":"A real app, <span class='o'>not a config file</span>","s2.sub":"Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.",
-    "term.l1":"Telegram bot token","term.l2":"paste token","term.l3":"OK — connected","term.l4":"Channels","term.l5":"OK — found","term.l6":"OK — 1055 tracks","term.l7":"Saved","term.l8":"Start now? (Y/n)",
-    "s2.f1t":"Guided first run","s2.f1d":"Token, channel and playlist are validated against the live APIs as you type.",
-    "s2.f2t":"Auto mode","s2.f2d":"Leave the window open — new tracks are posted automatically every 15 min.",
-    "s2.f3t":"Unlimited channels","s2.f3d":"Add as many playlist → channel pairs as you like, no code changes.",
-    "s3.title":"Two <span class='o'>editions</span>","s3.sub":"The project's evolution — from a clean command-line script to a packaged desktop product — lives in one repository.",
-    "s3.c1t":"Classic script","s3.c1a":"Pure Python CLI bot","s3.c1b":"yt-dlp + Telegram engine","s3.c1c":"Tests, CI, Docker","s3.c1d":"For developers & servers",
-    "s3.c2t":"Desktop app","s3.c2a":"One-file Windows .exe","s3.c2b":"Guided setup wizard","s3.c2c":"Menu-driven UI + auto mode","s3.c2d":"For everyone — no Python",
-    "s4.title":"Built like <span class='o'>production software</span>","s4.sub":"Not a throwaway script — engineered with the practices employers look for.",
-    "s4.f1t":"55 unit tests + green CI","s4.f1d":"Pure logic covered: posting loop, downloads, channel loading, retries.",
-    "s4.f2t":"Clean, typed code","s4.f2d":"Dataclasses, full type hints, Google-style docstrings, Ruff-linted.",
-    "s4.f3t":"Resilient by design","s4.f3d":"Exponential-backoff retries, single-instance lock, graceful ffmpeg fallback.",
-    "s4.f4t":"Ships everywhere","s4.f4d":"Dockerfile, GitHub Actions, PyInstaller build, 3-language docs.",
-    "s5.title":"Tech <span class='o'>stack</span>","s5.sub":"Lean, battle-tested tooling — every dependency earns its place.",
-    "s6.title":"Get <span class='o'>started</span>","s6.sub":"Two ways in — pick the one that fits you.",
-    "s6.c1tag":"No Python","s6.c1t":"Download the app","s6.c1a":"Grab the ZIP from Releases","s6.c1b":"Unzip anywhere","s6.c1c":"Run SpaceMusicHub.exe","s6.c1d":"Follow the wizard","s6.c1btn":"⬇ Latest release",
-    "s6.c2tag":"Developers","s6.c2t":"Run from source","s6.c2a":"Clone the repo","s6.c2d":"Or build with build_exe.bat","s6.c2btn":"★ Source on GitHub",
-    "footer.by":"Designed & developed by","footer.repo":"Repository","footer.rel":"Releases","footer.guide":"Install guide","footer.disc":"Disclaimer",
-    "footer.note":"Educational / portfolio project. The software is a tool and ships no copyrighted content — use only material you have the right to use.",
-    "footer.song":"♪ Soundtrack “Neon Ghosts in a Paper Town” — original concept by Chrono Warden, AI-generated in the style of Depeche Mode.",
-    "player.hint":"▶ Press play — the equalizer reacts to the music"
-  },
-  lv:{
-    "nav.how":"Kā tas darbojas","nav.setup":"Iestatīšana","nav.editions":"Versijas",
-    "hero.badge":"Darbojas produkcijā · 2 000+ dziesmas",
-    "hero.title":"Tavi YouTube saraksti,<br><span class='o'>tieši Telegram kanālā.</span>",
-    "hero.lead":"Telegram bots un atsevišķa Windows lietotne, kas seko YouTube atskaņošanas sarakstiem, lejupielādē katru jaunu dziesmu kā 192 kbps MP3 un automātiski publicē to tavā kanālā.",
-    "hero.cta1":"⬇ Lejupielādēt .exe","hero.cta2":"★ Skatīt kodu","hero.cta3":"Kā tas darbojas",
-    "stat.tests":"izturēti testi","stat.langs":"valodas","stat.config":"konfig. faili jārediģē","stat.bitrate":"bitreits MP3",
-    "s1.title":"Kā tas <span class='o'>darbojas</span>","s1.sub":"Vienkārša, uzticama plūsma. Darbojas pēc grafika, nekad nepublicē vienu dziesmu divreiz un turpina tieši no pārtraukuma vietas.",
-    "s1.f1t":"Nolasa sarakstu","s1.f1d":"Nolasa katru video ar yt-dlp — YouTube API atslēga nav vajadzīga.",
-    "s1.f2t":"Atlasa jaunās","s1.f2d":"Salīdzina ar kanāla stāvokli, tāpēc jau publicētās tiek izlaistas.",
-    "s1.f3t":"Lejupielādē un pārveido","s1.f3d":"yt-dlp + ffmpeg izveido īstu 192 kbps MP3 failu.",
-    "s1.f4t":"Publicē un piesprauž","s1.f4d":"Nosūta audio uz Telegram ar YouTube saiti un piesprauž jaunāko.",
-    "s1.f5t":"Saglabā stāvokli pēc katras","s1.f5d":"Avārija vai restarts turpina no pēdējās veiksmes — nevis no nulles.",
-    "s2.title":"Īsta lietotne, <span class='o'>nevis konfig. fails</span>","s2.sub":"Dubultklikšķis uz .exe — vednis soli pa solim pavada iestatīšanu un pārbauda katru vērtību. Bez Python, bez .env rediģēšanas.",
-    "term.l1":"Telegram bota marķieris","term.l2":"ielīmē marķieri","term.l3":"OK — savienots","term.l4":"Kanāli","term.l5":"OK — atrasts","term.l6":"OK — 1055 dziesmas","term.l7":"Saglabāts","term.l8":"Sākt tagad? (Y/n)",
-    "s2.f1t":"Pavadīta pirmā palaišana","s2.f1d":"Marķieris, kanāls un saraksts tiek pārbaudīti tiešsaistē, kamēr raksti.",
-    "s2.f2t":"Auto režīms","s2.f2d":"Atstāj logu atvērtu — jaunās dziesmas publicējas pašas ik pēc 15 min.",
-    "s2.f3t":"Neierobežoti kanāli","s2.f3d":"Pievieno tik pārus saraksts → kanāls, cik vēlies, bez koda izmaiņām.",
-    "s3.title":"Divas <span class='o'>versijas</span>","s3.sub":"Projekta evolūcija — no tīra komandrindas skripta līdz iepakotai darbvirsmas lietotnei — vienā repozitorijā.",
-    "s3.c1t":"Klasiskais skripts","s3.c1a":"Tīrs Python CLI bots","s3.c1b":"yt-dlp + Telegram dzinējs","s3.c1c":"Testi, CI, Docker","s3.c1d":"Izstrādātājiem un serveriem",
-    "s3.c2t":"Darbvirsmas lietotne","s3.c2a":"Viena faila Windows .exe","s3.c2b":"Pavadīts iestatīšanas vednis","s3.c2c":"Izvēlnes UI + auto režīms","s3.c2d":"Visiem — bez Python",
-    "s4.title":"Veidots kā <span class='o'>produkcijas programmatūra</span>","s4.sub":"Ne vienreizējs skripts — izstrādāts ar praksēm, ko meklē darba devēji.",
-    "s4.f1t":"55 testi + zaļš CI","s4.f1d":"Pārklāta tīrā loģika: publicēšana, lejupielādes, kanālu ielāde, atkārtojumi.",
-    "s4.f2t":"Tīrs, tipizēts kods","s4.f2d":"Dataclasses, pilni tipu norādījumi, docstrings, Ruff pārbaudīts.",
-    "s4.f3t":"Noturīgs pēc dizaina","s4.f3d":"Eksponenciāli atkārtojumi, viena eksemplāra slēdzene, droša ffmpeg rezerve.",
-    "s4.f4t":"Darbojas visur","s4.f4d":"Dockerfile, GitHub Actions, PyInstaller būve, 3 valodu dokumentācija.",
-    "s5.title":"Tehnoloģiju <span class='o'>steks</span>","s5.sub":"Vienkārši, pārbaudīti rīki — katra atkarība ir pamatota.",
-    "s6.title":"Sāc <span class='o'>darbu</span>","s6.sub":"Divi ceļi — izvēlies sev piemēroto.",
-    "s6.c1tag":"Bez Python","s6.c1t":"Lejupielādē lietotni","s6.c1a":"Paņem ZIP no Releases","s6.c1b":"Atarhivē jebkur","s6.c1c":"Palaid SpaceMusicHub.exe","s6.c1d":"Seko vednim","s6.c1btn":"⬇ Jaunākā versija",
-    "s6.c2tag":"Izstrādātājiem","s6.c2t":"Palaist no koda","s6.c2a":"Klonē repozitoriju","s6.c2d":"Vai būvē ar build_exe.bat","s6.c2btn":"★ Kods GitHub",
-    "footer.by":"Izstrādājis","footer.repo":"Repozitorijs","footer.rel":"Versijas","footer.guide":"Instalācijas ceļvedis","footer.disc":"Atruna",
-    "footer.note":"Izglītojošs / portfolio projekts. Programmatūra ir rīks un nesatur autortiesību materiālus — izmanto tikai to, ko drīksti.",
-    "footer.song":"♪ Skaņu celiņš “Neon Ghosts in a Paper Town” — oriģinālā ideja: Chrono Warden, ģenerēts ar AI Depeche Mode stilā.",
-    "player.hint":"▶ Nospied play — ekvalaizers reaģē uz mūziku"
+    "hero.cta1":"⬇ Download the .exe","hero.cta2":"★ View Source",
+    "s1.label":"Pipeline","s1.title.a":"How it ","s1.title.b":"works",
+    "s1.sub":"A simple, reliable pipeline. Runs on a schedule, never posts the same track twice, and resumes exactly where it left off.",
+    "p1.l":"Fetch Playlist","p1.d":"yt-dlp reads every video. No API key needed.",
+    "p2.l":"Filter New","p2.d":"Already-posted tracks are skipped.",
+    "p3.l":"Convert MP3","p3.d":"Real 192 kbps audio via ffmpeg.",
+    "p4.l":"Post & Pin","p4.d":"Sends to Telegram + pins the latest.",
+    "p5.l":"Save State","p5.d":"Crash or restart? Resumes from last success.",
+    "s2.label":"Features","s2.title.a":"Built for ","s2.title.b":"real use",
+    "s2.sub":"Not a throwaway script — engineered with the practices employers look for.",
+    "f1.t":"Guided First Run","f1.d":"Token, channel, and playlist validated against live APIs as you type. No .env editing.","f1.tag":"UX",
+    "f2.t":"Auto Mode","f2.d":"Leave the window open — new tracks post automatically every 15 minutes.","f2.tag":"Automation",
+    "f3.t":"Unlimited Channels","f3.d":"Add as many playlist → channel pairs as you like, with no code changes.","f3.tag":"Scalable",
+    "f4.t":"55 Unit Tests + Green CI","f4.d":"Pure logic covered: posting loop, downloads, channel loading, retries.","f4.tag":"Quality",
+    "f5.t":"Resilient by Design","f5.d":"Exponential-backoff retries, single-instance lock, graceful ffmpeg fallback.","f5.tag":"Reliability",
+    "f6.t":"Ships Everywhere","f6.d":"Dockerfile, GitHub Actions, PyInstaller .exe build, 3-language docs.","f6.tag":"DevOps",
+    "s3.label":"Setup","s3.title.a":"A real app, ","s3.title.b":"not a config file",
+    "s3.sub":"Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.",
+    "tl1":"Telegram bot token","tl2":"paste token","tl3":"OK — connected","tl4":"Channels","tl5":"OK — found","tl6":"OK — 1055 tracks","tl7":"Saved","tl8":"Start now? (Y/n)",
+    "s4.label":"Editions","s4.title.a":"Two ","s4.title.b":"editions",
+    "s4.sub":"The project's evolution — from a CLI script to a packaged desktop product — lives in one repository.",
+    "e1.t":"Classic Script","e1.a":"Pure Python CLI bot","e1.b":"yt-dlp + Telegram engine","e1.c":"Tests, CI, Docker","e1.d":"For developers & servers",
+    "e2.t":"Desktop App","e2.a":"One-file Windows .exe","e2.b":"Guided setup wizard","e2.c":"Menu-driven UI + auto mode","e2.d":"For everyone — no Python",
+    "s5.label":"By the numbers","s5.title":"Results that speak",
+    "st1":"tracks mirrored in production","st2":"unit tests — all green","st3":"interface languages","st4":"config files to edit manually",
+    "s6.label":"Tech Stack","s6.title.a":"Lean, ","s6.title.b":"battle-tested","s6.title.c":" tooling","s6.sub":"Every dependency earns its place.",
+    "cta.label":"Get started","cta.t1":"Ready to ","cta.t2":"automate","cta.t3":"your music?",
+    "cta.sub":"Two ways in — pick the one that fits you. Works for developers and non-technical users alike.",
+    "cta.btn1":"⬇ Download the .exe","cta.btn2":"★ View Source on GitHub",
+    "ft.repo":"Repository","ft.rel":"Releases","ft.guide":"Install guide","ft.disc":"Disclaimer",
+    "ft.note":"Educational / portfolio project. The software is a tool and ships no copyrighted content — use only material you have the right to use."
   },
   ru:{
-    "nav.how":"Как работает","nav.setup":"Настройка","nav.editions":"Версии",
-    "hero.badge":"Работает в продакшне · 2 000+ треков",
-    "hero.title":"Твои плейлисты YouTube —<br><span class='o'>прямо в Telegram.</span>",
-    "hero.lead":"Telegram-бот и отдельное Windows-приложение, которое следит за плейлистами YouTube, скачивает каждый новый трек как MP3 192 kbps и сам публикует его в твой канал.",
-    "hero.cta1":"⬇ Скачать .exe","hero.cta2":"★ Исходный код","hero.cta3":"Как это работает",
-    "stat.tests":"тестов проходят","stat.langs":"языка","stat.config":"файлов настройки","stat.bitrate":"битрейт MP3",
-    "s1.title":"Как это <span class='o'>работает</span>","s1.sub":"Простой и надёжный конвейер. Работает по расписанию, не публикует один трек дважды и продолжает ровно с места остановки.",
-    "s1.f1t":"Читает плейлист","s1.f1d":"Читает каждое видео через yt-dlp — ключ YouTube API не нужен.",
-    "s1.f2t":"Отбирает новое","s1.f2d":"Сверяет с состоянием канала, уже отправленные треки пропускаются.",
-    "s1.f3t":"Скачивает и конвертирует","s1.f3d":"yt-dlp + ffmpeg делают настоящий MP3 192 kbps.",
-    "s1.f4t":"Публикует и закрепляет","s1.f4d":"Отправляет аудио в Telegram со ссылкой на YouTube, закрепляет последний.",
-    "s1.f5t":"Сохраняет состояние после каждого","s1.f5d":"Сбой или перезапуск продолжают с последнего успеха — не с нуля.",
-    "s2.title":"Настоящее приложение, <span class='o'>а не конфиг</span>","s2.sub":"Двойной клик по .exe — мастер по шагам проводит настройку и проверяет каждое значение. Без Python, без правки .env.",
-    "term.l1":"Токен бота Telegram","term.l2":"вставь токен","term.l3":"ОК — подключено","term.l4":"Каналы","term.l5":"ОК — найден","term.l6":"ОК — 1055 треков","term.l7":"Сохранено","term.l8":"Запустить? (Y/n)",
-    "s2.f1t":"Мастер при первом запуске","s2.f1d":"Токен, канал и плейлист проверяются вживую, пока ты вводишь.",
-    "s2.f2t":"Авто-режим","s2.f2d":"Оставь окно открытым — новые треки публикуются сами каждые 15 мин.",
-    "s2.f3t":"Сколько угодно каналов","s2.f3d":"Добавляй пары плейлист → канал без правки кода.",
-    "s3.title":"Две <span class='o'>версии</span>","s3.sub":"Эволюция проекта — от чистого скрипта в командной строке до упакованного приложения — в одном репозитории.",
-    "s3.c1t":"Классический скрипт","s3.c1a":"Чистый Python CLI-бот","s3.c1b":"Движок yt-dlp + Telegram","s3.c1c":"Тесты, CI, Docker","s3.c1d":"Для разработчиков и серверов",
-    "s3.c2t":"Приложение","s3.c2a":"Один .exe для Windows","s3.c2b":"Пошаговый мастер настройки","s3.c2c":"Меню + авто-режим","s3.c2d":"Для всех — без Python",
-    "s4.title":"Сделано как <span class='o'>боевой продукт</span>","s4.sub":"Не одноразовый скрипт — собрано по практикам, которые ценят работодатели.",
-    "s4.f1t":"55 тестов + зелёный CI","s4.f1d":"Покрыта логика: цикл публикации, скачивание, загрузка каналов, ретраи.",
-    "s4.f2t":"Чистый типизированный код","s4.f2d":"Dataclasses, полные type hints, докстринги, проверка Ruff.",
-    "s4.f3t":"Надёжность по дизайну","s4.f3d":"Ретраи с экспон. задержкой, lock от двойного запуска, мягкий фолбэк ffmpeg.",
-    "s4.f4t":"Запускается везде","s4.f4d":"Dockerfile, GitHub Actions, сборка PyInstaller, документация на 3 языках.",
-    "s5.title":"Технологии","s5.sub":"Лёгкий проверенный набор — каждая зависимость на своём месте.",
-    "s6.title":"Начать","s6.sub":"Два пути — выбери удобный.",
-    "s6.c1tag":"Без Python","s6.c1t":"Скачать приложение","s6.c1a":"Возьми ZIP из Releases","s6.c1b":"Распакуй куда угодно","s6.c1c":"Запусти SpaceMusicHub.exe","s6.c1d":"Следуй мастеру","s6.c1btn":"⬇ Последний релиз",
-    "s6.c2tag":"Разработчикам","s6.c2t":"Запуск из исходников","s6.c2a":"Клонируй репозиторий","s6.c2d":"Или собери build_exe.bat","s6.c2btn":"★ Код на GitHub",
-    "footer.by":"Разработал","footer.repo":"Репозиторий","footer.rel":"Релизы","footer.guide":"Инструкция","footer.disc":"Оговорка",
-    "footer.note":"Образовательный / портфолио-проект. Программа — инструмент и не содержит защищённого контента. Используй только то, на что есть права.",
-    "footer.song":"♪ Музыка «Neon Ghosts in a Paper Town» — оригинальная идея Chrono Warden, сгенерирована ИИ в стиле Depeche Mode.",
-    "player.hint":"▶ Нажми play — эквалайзер пляшет под музыку"
+    "hero.badge":"РАБОТАЕТ В ПРОДАКШНЕ · 2 000+ ТРЕКОВ",
+    "hero.t1":"ТВОИ ПЛЕЙЛИСТЫ,","hero.t2":"ПРЯМО В TELEGRAM.",
+    "hero.lead":"Telegram-бот и отдельное Windows-приложение, которое следит за плейлистами YouTube, скачивает каждый новый трек как MP3 192 kbps и публикует его в твой канал — автоматически.",
+    "hero.cta1":"⬇ Скачать .exe","hero.cta2":"★ Исходный код",
+    "s1.label":"Конвейер","s1.title.a":"Как это ","s1.title.b":"работает",
+    "s1.sub":"Простой и надёжный конвейер. Работает по расписанию, не публикует один трек дважды и продолжает ровно с места остановки.",
+    "p1.l":"Читает плейлист","p1.d":"yt-dlp читает каждое видео. API-ключ не нужен.",
+    "p2.l":"Фильтрует новое","p2.d":"Уже отправленные треки пропускаются.",
+    "p3.l":"Конвертирует MP3","p3.d":"Настоящий 192 kbps через ffmpeg.",
+    "p4.l":"Публикует и закрепляет","p4.d":"Отправляет в Telegram. Закрепляет последний.",
+    "p5.l":"Сохраняет состояние","p5.d":"Сбой? Продолжает с последнего успеха.",
+    "s2.label":"Возможности","s2.title.a":"Сделано для ","s2.title.b":"реального использования",
+    "s2.sub":"Не одноразовый скрипт — собрано по практикам, которые ценят работодатели.",
+    "f1.t":"Мастер при первом запуске","f1.d":"Токен, канал и плейлист проверяются вживую. Без правки .env.","f1.tag":"UX",
+    "f2.t":"Авто-режим","f2.d":"Оставь окно открытым — треки публикуются сами каждые 15 мин.","f2.tag":"Автоматизация",
+    "f3.t":"Сколько угодно каналов","f3.d":"Добавляй пары плейлист → канал без правки кода.","f3.tag":"Масштаб",
+    "f4.t":"55 тестов + зелёный CI","f4.d":"Покрыта логика: цикл публикации, скачивание, загрузка каналов, ретраи.","f4.tag":"Качество",
+    "f5.t":"Надёжность по дизайну","f5.d":"Ретраи с экспон. задержкой, lock от двойного запуска, фолбэк ffmpeg.","f5.tag":"Надёжность",
+    "f6.t":"Запускается везде","f6.d":"Dockerfile, GitHub Actions, PyInstaller, документация на 3 языках.","f6.tag":"DevOps",
+    "s3.label":"Установка","s3.title.a":"Настоящее приложение, ","s3.title.b":"а не конфиг",
+    "s3.sub":"Двойной клик по .exe — мастер проводит настройку и проверяет каждое значение вживую. Без Python, без .env.",
+    "tl1":"Токен бота Telegram","tl2":"вставь токен","tl3":"ОК — подключено","tl4":"Каналы","tl5":"ОК — найден","tl6":"ОК — 1055 треков","tl7":"Сохранено","tl8":"Запустить? (Y/n)",
+    "s4.label":"Версии","s4.title.a":"Две ","s4.title.b":"версии",
+    "s4.sub":"Эволюция проекта — от чистого скрипта до упакованного приложения — в одном репозитории.",
+    "e1.t":"Классический скрипт","e1.a":"Чистый Python CLI-бот","e1.b":"Движок yt-dlp + Telegram","e1.c":"Тесты, CI, Docker","e1.d":"Для разработчиков и серверов",
+    "e2.t":"Приложение","e2.a":"Один .exe для Windows","e2.b":"Пошаговый мастер настройки","e2.c":"Меню + авто-режим","e2.d":"Для всех — без Python",
+    "s5.label":"Цифры","s5.title":"Результаты говорят сами",
+    "st1":"треков зеркалировано в продакшне","st2":"юнит-тестов — все зелёные","st3":"языка интерфейса","st4":"файлов настройки нужно редактировать",
+    "s6.label":"Технологии","s6.title.a":"Лёгкий ","s6.title.b":"проверенный","s6.title.c":" набор","s6.sub":"Каждая зависимость на своём месте.",
+    "cta.label":"Начать","cta.t1":"Готов ","cta.t2":"автоматизировать","cta.t3":"музыку?",
+    "cta.sub":"Два пути — выбери удобный. Работает для разработчиков и обычных пользователей.",
+    "cta.btn1":"⬇ Скачать .exe","cta.btn2":"★ Код на GitHub",
+    "ft.repo":"Репозиторий","ft.rel":"Релизы","ft.guide":"Инструкция","ft.disc":"Оговорка",
+    "ft.note":"Образовательный / портфолио-проект. Программа — инструмент и не содержит защищённого контента."
+  },
+  lv:{
+    "hero.badge":"DARBOJAS PRODUKCIJĀ · 2 000+ DZIESMAS",
+    "hero.t1":"TAVI SARAKSTI,","hero.t2":"TIEŠI TELEGRAM.",
+    "hero.lead":"Telegram bots un atsevišķa Windows lietotne, kas seko YouTube sarakstiem, lejupielādē katru jaunu dziesmu kā 192 kbps MP3 un automātiski publicē to tavā kanālā.",
+    "hero.cta1":"⬇ Lejupielādēt .exe","hero.cta2":"★ Skatīt kodu",
+    "s1.label":"Konveijers","s1.title.a":"Kā tas ","s1.title.b":"darbojas",
+    "s1.sub":"Vienkārša, uzticama plūsma. Darbojas pēc grafika, nekad nepublicē vienu dziesmu divreiz.",
+    "p1.l":"Nolasa sarakstu","p1.d":"yt-dlp nolasa katru video. API nav vajadzīgs.",
+    "p2.l":"Atlasa jaunās","p2.d":"Jau publicētās tiek izlaistas.",
+    "p3.l":"Pārveido MP3","p3.d":"Īsts 192 kbps audio ar ffmpeg.",
+    "p4.l":"Publicē un piesprauž","p4.d":"Nosūta uz Telegram. Piesprauž pēdējo.",
+    "p5.l":"Saglabā stāvokli","p5.d":"Avārija? Turpina no pēdējās veiksmes.",
+    "s2.label":"Iespējas","s2.title.a":"Veidots ","s2.title.b":"reālai lietošanai",
+    "s2.sub":"Ne vienreizējs skripts — izstrādāts ar praksēm, ko meklē darba devēji.",
+    "f1.t":"Pavadīta pirmā palaišana","f1.d":"Marķieris, kanāls un saraksts tiek pārbaudīti tiešsaistē. Bez .env.","f1.tag":"UX",
+    "f2.t":"Auto režīms","f2.d":"Atstāj logu atvērtu — jaunās dziesmas publicējas ik pēc 15 min.","f2.tag":"Automatizācija",
+    "f3.t":"Neierobežoti kanāli","f3.d":"Pievieno pārus saraksts → kanāls bez koda izmaiņām.","f3.tag":"Mērogojams",
+    "f4.t":"55 testi + zaļš CI","f4.d":"Pārklāta loģika: publicēšana, lejupielādes, kanālu ielāde.","f4.tag":"Kvalitāte",
+    "f5.t":"Noturīgs pēc dizaina","f5.d":"Eksponenciāli atkārtojumi, viena eksemplāra slēdzene, ffmpeg rezerve.","f5.tag":"Uzticamība",
+    "f6.t":"Darbojas visur","f6.d":"Dockerfile, GitHub Actions, PyInstaller, dokumentācija 3 valodās.","f6.tag":"DevOps",
+    "s3.label":"Iestatīšana","s3.title.a":"Īsta lietotne, ","s3.title.b":"nevis konfig. fails",
+    "s3.sub":"Dubultklikšķis uz .exe — vednis soli pa solim pavada iestatīšanu un pārbauda katru vērtību.",
+    "tl1":"Telegram bota marķieris","tl2":"ielīmē marķieri","tl3":"OK — savienots","tl4":"Kanāli","tl5":"OK — atrasts","tl6":"OK — 1055 dziesmas","tl7":"Saglabāts","tl8":"Sākt tagad? (Y/n)",
+    "s4.label":"Versijas","s4.title.a":"Divas ","s4.title.b":"versijas",
+    "s4.sub":"Projekta evolūcija — no komandrindas skripta līdz darbvirsmas lietotnei — vienā repozitorijā.",
+    "e1.t":"Klasiskais skripts","e1.a":"Tīrs Python CLI bots","e1.b":"yt-dlp + Telegram dzinējs","e1.c":"Testi, CI, Docker","e1.d":"Izstrādātājiem un serveriem",
+    "e2.t":"Darbvirsmas lietotne","e2.a":"Viena faila Windows .exe","e2.b":"Pavadīts iestatīšanas vednis","e2.c":"Izvēlnes UI + auto režīms","e2.d":"Visiem — bez Python",
+    "s5.label":"Skaitļos","s5.title":"Rezultāti runā paši",
+    "st1":"dziesmas zerkalotas produkcijā","st2":"testi — visi zaļi","st3":"interfeisa valodas","st4":"konfig. faili jārediģē manuāli",
+    "s6.label":"Tehnoloģijas","s6.title.a":"Vienkāršs ","s6.title.b":"pārbaudīts","s6.title.c":" komplekts","s6.sub":"Katra atkarība ir pamatota.",
+    "cta.label":"Sākt","cta.t1":"Gatavs ","cta.t2":"automatizēt","cta.t3":"mūziku?",
+    "cta.sub":"Divi ceļi — izvēlies sev piemēroto. Darbojas gan izstrādātājiem, gan parastiem lietotājiem.",
+    "cta.btn1":"⬇ Jaunākā versija","cta.btn2":"★ Kods GitHub",
+    "ft.repo":"Repozitorijs","ft.rel":"Versijas","ft.guide":"Instalācijas ceļvedis","ft.disc":"Atruna",
+    "ft.note":"Izglītojošs / portfolio projekts. Programmatūra ir rīks un nesatur autortiesību materiālus."
   }
 };
 
 function applyLang(lang){
-  const t = I18N[lang] || I18N.en;
-  document.documentElement.lang = lang;
+  const t=I18N[lang]||I18N.en;
+  document.documentElement.lang=lang;
   document.querySelectorAll('[data-i18n]').forEach(el=>{
-    const v = t[el.getAttribute('data-i18n')];
-    if(v!=null) el.textContent = v;
+    const v=t[el.getAttribute('data-i18n')];
+    if(v!=null) el.textContent=v;
   });
-  document.querySelectorAll('[data-i18n-html]').forEach(el=>{
-    const v = t[el.getAttribute('data-i18n-html')];
-    if(v!=null) el.innerHTML = v;
-  });
-  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on', b.dataset.lang===lang));
-  try{ localStorage.setItem('smh_lang', lang); }catch(e){}
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
+  try{localStorage.setItem('smh_lang',lang);}catch(e){}
 }
 document.querySelectorAll('.lang-btn').forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
-let startLang = 'en';
-try{ startLang = localStorage.getItem('smh_lang') || (navigator.language||'en').slice(0,2); }catch(e){}
-if(!I18N[startLang]) startLang='en';
-applyLang(startLang);
+let sl='en';
+try{sl=localStorage.getItem('smh_lang')||(navigator.language||'en').slice(0,2);}catch(e){}
+if(!I18N[sl]) sl='en';
+applyLang(sl);
 
-// hero decorative equalizer bars
-const heroEq = document.getElementById('heroEq');
-for(let i=0;i<22;i++){ const s=document.createElement('span'); s.style.animationDelay=(i*0.07)+'s'; s.style.animationDuration=(0.8+ (i%5)*0.18)+'s'; heroEq.appendChild(s); }
-
-// reveal on scroll
-const els=document.querySelectorAll('.reveal');
-if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){ els.forEach(e=>e.classList.add('in')); }
-else{ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.12}); els.forEach(e=>io.observe(e)); }
-
-// audio + visualizer
-const audio=document.getElementById('song'), playBtn=document.getElementById('playBtn');
-const canvas=document.getElementById('viz'), cx=canvas.getContext('2d');
-let actx,analyser,data,vizReady=false,playing=false,tick=0;
-const NBARS=28;
-function sizeCanvas(){ const r=canvas.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; canvas.width=Math.max(1,r.width*dpr); canvas.height=Math.max(1,r.height*dpr); cx.setTransform(dpr,0,0,dpr,0,0); }
-window.addEventListener('resize',sizeCanvas); sizeCanvas();
-
-// Best-effort visualizer. NEVER blocks playback — if Web Audio is unavailable
-// (e.g. opening the page from a local file://), the song still plays normally.
-function setupViz(){
-  if(vizReady) return;
-  try{
-    actx=new (window.AudioContext||window.webkitAudioContext)();
-    analyser=actx.createAnalyser(); analyser.fftSize=64;
-    const src=actx.createMediaElementSource(audio);
-    src.connect(analyser); analyser.connect(actx.destination);
-    data=new Uint8Array(analyser.frequencyBinCount);
-    vizReady=true;
-  }catch(e){ vizReady=false; }   // audio element keeps its own output -> sound still plays
+// AURORA CANVAS
+const cvs=document.getElementById('aurora'),cx=cvs.getContext('2d');
+let W,H;
+function rsz(){W=cvs.width=window.innerWidth;H=cvs.height=window.innerHeight;}
+rsz();window.addEventListener('resize',rsz);
+const orbs=[
+  {x:.15,y:.3,r:.45,col:'#8b5cf6',sp:.0007,ph:0},
+  {x:.85,y:.2,r:.4,col:'#00d4ff',sp:.0005,ph:2.1},
+  {x:.5,y:.85,r:.5,col:'#f72585',sp:.0006,ph:4.2},
+  {x:.2,y:.72,r:.35,col:'#8b5cf6',sp:.0008,ph:1.3},
+  {x:.8,y:.6,r:.38,col:'#00d4ff',sp:.0004,ph:3.5},
+];
+let tick=0;
+function drawAurora(){
+  cx.clearRect(0,0,W,H);
+  orbs.forEach(o=>{
+    const x=(o.x+Math.sin(tick*o.sp+o.ph)*.13)*W;
+    const y=(o.y+Math.cos(tick*o.sp+o.ph+1)*.10)*H;
+    const r=o.r*Math.max(W,H)*.55;
+    const g=cx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,o.col+'22');g.addColorStop(.5,o.col+'09');g.addColorStop(1,'transparent');
+    cx.fillStyle=g;cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);cx.fill();
+  });
+  tick++;requestAnimationFrame(drawAurora);
 }
-function draw(){
-  requestAnimationFrame(draw); tick++;
-  const w=canvas.clientWidth,h=canvas.clientHeight; cx.clearRect(0,0,w,h);
-  const gap=3, bw=Math.max(2,(w-(NBARS-1)*gap)/NBARS);
-  if(vizReady && playing) analyser.getByteFrequencyData(data);
-  for(let i=0;i<NBARS;i++){
-    let v;
-    if(vizReady && playing){ v=data[i%data.length]/255; }
-    else { v=0.12+0.10*Math.abs(Math.sin(tick*0.05+i*0.5))*(1+0.4*Math.sin(i)); }
-    const bh=Math.max(3, v*h), x=i*(bw+gap), y=h-bh;
-    const g=cx.createLinearGradient(0,y,0,h); g.addColorStop(0,'#f5894f'); g.addColorStop(1,'#ef6a33');
-    cx.fillStyle=g; cx.beginPath();
-    if(cx.roundRect) cx.roundRect(x,y,bw,bh,2); else cx.rect(x,y,bw,bh);
-    cx.fill();
-  }
+drawAurora();
+
+// NAV SCROLL
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40),{passive:true});
+
+// HERO EQ BARS
+const heq=document.getElementById('heroEq');
+for(let i=0;i<34;i++){const s=document.createElement('span');s.style.animationDelay=(i*.045)+'s';s.style.animationDuration=(.65+(i%6)*.13)+'s';heq.appendChild(s);}
+
+// SCROLL REVEAL
+const rels=document.querySelectorAll('.reveal');
+if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){rels.forEach(e=>e.classList.add('in'));}
+else{const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.08});rels.forEach(e=>io.observe(e));}
+
+// COUNTER ANIMATION
+function animCount(el,target,suffix){
+  const s=performance.now(),d=1600;
+  (function step(now){
+    const p=Math.min((now-s)/d,1),ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target).toLocaleString()+(suffix||'');
+    if(p<1)requestAnimationFrame(step);
+  })(s);
 }
-if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches) draw();
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){animCount(e.target,+e.target.dataset.count,e.target.dataset.suffix||'');cio.unobserve(e.target);}
+}),{threshold:.5});
+document.querySelectorAll('[data-count]').forEach(e=>cio.observe(e));
 
-playBtn.addEventListener('click',async()=>{
-  if(audio.paused){
-    try{
-      await audio.play();                 // 1) start sound first — guaranteed
-      playing=true; playBtn.textContent='⏸';
-      setupViz();                          // 2) attach equalizer (optional)
-      if(actx && actx.state==='suspended'){ try{ await actx.resume(); }catch(e){} }
-    }catch(e){
-      document.getElementById('songTitle').textContent='♪ не удалось воспроизвести / cannot play';
-    }
-  } else {
-    audio.pause(); playing=false; playBtn.textContent='▶';
-  }
+// MAGNETIC BUTTONS
+document.querySelectorAll('.btn-primary').forEach(btn=>{
+  btn.addEventListener('mousemove',e=>{
+    const r=btn.getBoundingClientRect();
+    btn.style.transform=`translate(${(e.clientX-r.left-r.width/2)*.18}px,${(e.clientY-r.top-r.height/2)*.18}px) translateY(-3px)`;
+  });
+  btn.addEventListener('mouseleave',()=>{btn.style.transform='';});
 });
-audio.addEventListener('ended',()=>{ playing=false; playBtn.textContent='▶'; });
-audio.addEventListener('error',()=>{ document.getElementById('songTitle').textContent='♪ song.mp3 не загрузился / failed to load'; });
-
-// seek bar + time display
-const seek=document.getElementById('seek'), curEl=document.getElementById('cur'), durEl=document.getElementById('dur');
-let seeking=false;
-function fmt(t){ if(!isFinite(t)||t<0) return '0:00'; const m=Math.floor(t/60), s=Math.floor(t%60); return m+':'+(s<10?'0':'')+s; }
-function setFill(p){ seek.style.backgroundSize=(Math.max(0,Math.min(1,p))*100)+'% 100%'; }
-audio.addEventListener('loadedmetadata',()=>{ durEl.textContent=fmt(audio.duration); });
-audio.addEventListener('timeupdate',()=>{
-  if(seeking) return;
-  const p=audio.currentTime/(audio.duration||1);
-  seek.value=Math.round(p*1000); curEl.textContent=fmt(audio.currentTime); setFill(p);
-});
-seek.addEventListener('input',()=>{ seeking=true; const p=seek.value/1000; curEl.textContent=fmt(p*(audio.duration||0)); setFill(p); });
-seek.addEventListener('change',()=>{ const p=seek.value/1000; if(audio.duration) audio.currentTime=p*audio.duration; seeking=false; });
 </script>
 </body>
 </html>
