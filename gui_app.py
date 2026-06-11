@@ -31,10 +31,11 @@ from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGraphicsDropShadowEffect,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
     QPushButton, QScrollBar, QSizePolicy, QStackedWidget,
-    QTextEdit, QVBoxLayout, QWidget,
+    QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget,
 )
+from PyQt6.QtGui import QAction
 
 # ── Paths ─────────────────────────────────────────────────────────────
 if getattr(sys, "frozen", False):
@@ -42,13 +43,30 @@ if getattr(sys, "frozen", False):
 else:
     BASE_DIR = Path(__file__).parent
 
+def _resource(name: str) -> Path:
+    """Look for bundled assets first (PyInstaller _MEIPASS), fall back to repo."""
+    if hasattr(sys, "_MEIPASS"):
+        p = Path(sys._MEIPASS) / name
+        if p.exists():
+            return p
+    for base in (BASE_DIR, BASE_DIR / "docs"):
+        p = base / name
+        if p.exists():
+            return p
+    return BASE_DIR / name
+
 ENV_PATH   = BASE_DIR / ".env"
-LOGO_PATH  = BASE_DIR / "docs" / "logo.png"
+LOGO_PATH  = _resource("logo.png")
+LOGO_ICO   = _resource("logo.ico")
 BOT_SCRIPT = BASE_DIR / "telegram_bot_music_youtube.py"
 VIDEO_PATHS = [
+    _resource("bg.mp4"),
     BASE_DIR / "bg.mp4",
     BASE_DIR / "docs" / "bg.mp4",
 ]
+
+# True when launched with --tray (auto-start / background mode)
+START_HIDDEN = "--tray" in sys.argv
 
 # ── Palette ───────────────────────────────────────────────────────────
 BG       = "#050505"
@@ -766,11 +784,17 @@ class MainWindow(QMainWindow):
         if LOGO_PATH.exists():
             self.setWindowIcon(QIcon(str(LOGO_PATH)))
 
+        self._force_quit = False
         self._setup_layers()
         self._setup_video()
         self._setup_nav()
         self._setup_pages()
         self._goto_initial()
+        self._setup_tray()
+        if START_HIDDEN:
+            # Launched with --tray (e.g. from Windows startup) — stay hidden,
+            # auto-resume Watch mode if config exists.
+            QTimer.singleShot(800, self._autostart_watch)
 
     # ── layer stack ───────────────────────────────────────────────────
     def _setup_layers(self) -> None:
@@ -879,6 +903,84 @@ class MainWindow(QMainWindow):
         self._overlay.setGeometry(0, 0, w, h)
         self._content.setGeometry(0, 0, w, h)
 
+    # ── system tray + background mode ─────────────────────────────────
+    def _setup_tray(self) -> None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self._tray = None
+            return
+
+        icon = QIcon(str(LOGO_ICO)) if LOGO_ICO.exists() else \
+               QIcon(str(LOGO_PATH)) if LOGO_PATH.exists() else QIcon()
+        self._tray = QSystemTrayIcon(icon, self)
+        self._tray.setToolTip("Space Music Hub")
+
+        menu = QMenu()
+        act_show  = QAction("Open Dashboard",    self)
+        act_watch = QAction("▶ Start Watching",  self)
+        act_stop  = QAction("■ Stop",            self)
+        act_quit  = QAction("Quit",              self)
+
+        act_show.triggered.connect(self._show_from_tray)
+        act_watch.triggered.connect(lambda: self._dashboard._start("watch"))
+        act_stop.triggered.connect(self._dashboard._stop)
+        act_quit.triggered.connect(self._quit_for_real)
+
+        menu.addAction(act_show)
+        menu.addSeparator()
+        menu.addAction(act_watch)
+        menu.addAction(act_stop)
+        menu.addSeparator()
+        menu.addAction(act_quit)
+
+        self._tray.setContextMenu(menu)
+        self._tray.activated.connect(self._on_tray_activated)
+        self._tray.show()
+
+    def _on_tray_activated(self, reason) -> None:
+        # Double-click on the tray icon → toggle window
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            if self.isVisible():
+                self.hide()
+            else:
+                self._show_from_tray()
+
+    def _show_from_tray(self) -> None:
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.setWindowState(
+            self.windowState() & ~Qt.WindowState.WindowMinimized
+            | Qt.WindowState.WindowActive
+        )
+
+    def _autostart_watch(self) -> None:
+        """Called on --tray boot: start Watch mode silently if config exists."""
+        if ENV_PATH.exists() and "TELEGRAM_BOT_TOKEN=" in ENV_PATH.read_text(
+                encoding="utf-8", errors="ignore"):
+            self._dashboard._start("watch")
+
+    def _quit_for_real(self) -> None:
+        self._force_quit = True
+        if self._dashboard._worker:
+            self._dashboard._worker.stop()
+        if self._tray:
+            self._tray.hide()
+        QApplication.instance().quit()
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        """Close button → hide to tray; only exit via tray Quit menu."""
+        if self._force_quit or not self._tray:
+            event.accept()
+            return
+        event.ignore()
+        self.hide()
+        self._tray.showMessage(
+            "Space Music Hub",
+            "Still running in the tray — right-click the icon to control or quit.",
+            QSystemTrayIcon.MessageIcon.Information,
+            3000,
+        )
+
 
 # ══════════════════════════════════════════════════════════════════════
 #  Entry point
@@ -887,9 +989,16 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Space Music Hub")
     app.setStyleSheet(QSS)
+    # Critical for tray-only mode: don't exit when last window closes.
+    app.setQuitOnLastWindowClosed(False)
+    if LOGO_ICO.exists():
+        app.setWindowIcon(QIcon(str(LOGO_ICO)))
+    elif LOGO_PATH.exists():
+        app.setWindowIcon(QIcon(str(LOGO_PATH)))
 
     win = MainWindow()
-    win.show()
+    if not START_HIDDEN:
+        win.show()
     sys.exit(app.exec())
 
 

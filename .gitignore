@@ -72,3 +72,6 @@ ffmpeg.exe
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Staged installer payload (built by PyInstaller — too large for git)
+installer/SpaceMusicHub/
