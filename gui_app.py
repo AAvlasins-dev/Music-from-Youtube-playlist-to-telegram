@@ -185,7 +185,7 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.title":   "Шаг 2 — куда и откуда брать музыку",
         "w.step2.sub":     "Нужен публичный Telegram-канал, в который бот будет постить треки, и YouTube-плейлист, который он будет мониторить.",
         "w.step2.howto": (
-            "<b style='color:#f0f4ff'>А. Канал в Telegram:</b>"
+            "<b style='color:#f0f4ff'>Шаг 2.1 — Канал в Telegram:</b>"
             "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
             "<li>В Telegram: меню (≡) → <b>Создать канал</b> → дай название → выбери <b>Публичный</b>.</li>"
             "<li>Придумай ему публичную ссылку, например <code>my_music_2026</code>. Полностью это будет "
@@ -194,16 +194,19 @@ LANGS: dict[str, dict[str, str]] = {
             "<b>Добавить администратора</b> → найди своего бота по имени → добавь.</li>"
             "<li>Поставь ему галочки <b>«Размещать сообщения»</b> и <b>«Закреплять сообщения»</b>. Без них бот не сможет постить.</li>"
             "</ol>"
-            "<b style='color:#f0f4ff'>Б. Плейлист на YouTube:</b>"
+            "<b style='color:#f0f4ff'>Шаг 2.2 — Плейлист на YouTube:</b>"
             "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
             "<li>Открой YouTube, найди свой плейлист.</li>"
             "<li>Скопируй из адресной строки браузера ссылку — она должна выглядеть так: "
             "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
-            "<li>Вставь её в нижнее поле.</li>"
+            "<li>Вставь её в нижнее поле. Можно добавить несколько пар «канал + плейлист» — кнопка <b>+ Добавить пару</b> под последней парой.</li>"
             "</ol>"
         ),
         "w.step2.chan.placeholder":  "@название_канала (с @ в начале)",
         "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+        "w.step2.add":               "+ Добавить пару (канал + плейлист)",
+        "w.step2.remove":            "×",
+        "w.step2.pair":              "Пара #{0}",
 
         # Wizard step 3 — review
         "w.step3.title":  "Шаг 3 — проверь и запусти",
@@ -280,7 +283,7 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.title":   "Step 2 — where to post, what to mirror",
         "w.step2.sub":     "You need a public Telegram channel for the bot to post into, and a YouTube playlist for it to watch.",
         "w.step2.howto": (
-            "<b style='color:#f0f4ff'>A. Telegram channel:</b>"
+            "<b style='color:#f0f4ff'>Step 2.1 — Telegram channel:</b>"
             "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
             "<li>In Telegram: menu (≡) → <b>Create Channel</b> → name it → choose <b>Public</b>.</li>"
             "<li>Set a public link, e.g. <code>my_music_2026</code>. The full handle is "
@@ -289,16 +292,19 @@ LANGS: dict[str, dict[str, str]] = {
             "<b>Add Administrator</b> → find your bot by name → add it.</li>"
             "<li>Give it the <b>“Post Messages”</b> and <b>“Pin Messages”</b> permissions. Without these the bot can't post.</li>"
             "</ol>"
-            "<b style='color:#f0f4ff'>B. YouTube playlist:</b>"
+            "<b style='color:#f0f4ff'>Step 2.2 — YouTube playlist:</b>"
             "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
             "<li>Open YouTube, find your playlist.</li>"
             "<li>Copy the URL from the address bar — it looks like "
             "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
-            "<li>Paste it into the field below.</li>"
+            "<li>Paste it below. You can add more channel + playlist pairs with the <b>+ Add pair</b> button below the last one.</li>"
             "</ol>"
         ),
         "w.step2.chan.placeholder":  "@channel_handle (must start with @)",
         "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+        "w.step2.add":               "+ Add pair (channel + playlist)",
+        "w.step2.remove":            "×",
+        "w.step2.pair":              "Pair #{0}",
         "w.step3.title":  "Step 3 — review & launch",
         "w.step3.sub":    "Looks good? Click Save & Launch. You can change settings later via ⚙ CONFIG.",
         "w.review.token":    "Bot token",
@@ -363,7 +369,7 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.title":   "2. solis — kur publicēt un ko sekot",
         "w.step2.sub":     "Vajag publisku Telegram kanālu, kurā bots publicēs, un YouTube atskaņošanas sarakstu, kuru tas vēros.",
         "w.step2.howto": (
-            "<b style='color:#f0f4ff'>A. Telegram kanāls:</b>"
+            "<b style='color:#f0f4ff'>2.1. solis — Telegram kanāls:</b>"
             "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
             "<li>Telegram: izvēlne (≡) → <b>Izveidot kanālu</b> → dod vārdu → izvēlies <b>Publisks</b>.</li>"
             "<li>Iestati publisko saiti, piem. <code>my_music_2026</code>. Pilns: <code>@my_music_2026</code>.</li>"
@@ -371,16 +377,19 @@ LANGS: dict[str, dict[str, str]] = {
             "<b>Pievienot administratoru</b> → atrodi savu botu → pievieno.</li>"
             "<li>Iedod tam atļaujas <b>«Publicēt ziņas»</b> un <b>«Piespraust ziņas»</b>.</li>"
             "</ol>"
-            "<b style='color:#f0f4ff'>B. YouTube atskaņošanas saraksts:</b>"
+            "<b style='color:#f0f4ff'>2.2. solis — YouTube atskaņošanas saraksts:</b>"
             "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
             "<li>Atver YouTube, atrodi savu sarakstu.</li>"
             "<li>Nokopē saiti no adreses joslas: "
             "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
-            "<li>Ielīmē to lejasējā laukā.</li>"
+            "<li>Ielīmē to lejasējā laukā. Var pievienot vairākus kanālu+saraksta pārus ar pogu <b>+ Pievienot pāri</b>.</li>"
             "</ol>"
         ),
         "w.step2.chan.placeholder":  "@kanala_vards (jāsākas ar @)",
         "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+        "w.step2.add":               "+ Pievienot pāri (kanāls + saraksts)",
+        "w.step2.remove":            "×",
+        "w.step2.pair":              "Pāris #{0}",
         "w.step3.title":  "3. solis — pārbaudi un palaid",
         "w.step3.sub":    "Viss kārtībā? Spied «Saglabāt un palaist». Vēlāk var mainīt caur ⚙ IESTATĪJUMI.",
         "w.review.token":    "Bota token",
@@ -442,6 +451,35 @@ def set_lang(code: str) -> None:
             pass
 
 
+# ══════════════════════════════════════════════════════════════════════
+#  Input normalisers — must match what the bot's setup_wizard does
+# ══════════════════════════════════════════════════════════════════════
+import re as _re
+
+
+def extract_playlist_id(text: str) -> str:
+    """Accept a full YouTube playlist URL OR a bare PL... ID.
+
+    The bot rebuilds the URL from the ID, so we must NOT save the full URL
+    here (otherwise the bot ends up requesting
+    `...playlist?list=https://www.youtube.com/playlist?list=PLxxxx`
+    and YouTube returns HTTP 400).
+    """
+    text = (text or "").strip()
+    m = _re.search(r"[?&]list=([A-Za-z0-9_-]+)", text)
+    return m.group(1) if m else text
+
+
+def normalise_handle(text: str) -> str:
+    """Accept @name, name, or t.me/name — return @name (or empty)."""
+    text = (text or "").strip()
+    link = _re.search(r"t\.me/([A-Za-z0-9_]+)", text)
+    if link:
+        text = link.group(1)
+    text = text.lstrip("@")
+    return f"@{text}" if text else ""
+
+
 # ── Global stylesheet ─────────────────────────────────────────────────
 QSS = f"""
 QWidget {{
@@ -468,11 +506,11 @@ QLineEdit:focus {{
     background: rgba(0,212,255,10);
 }}
 QTextEdit {{
-    background: rgba(0,0,0,140);
-    border: 1px solid rgba(255,255,255,8);
+    background: rgba(0,0,0,210);
+    border: 1px solid rgba(0,212,255,28);
     border-radius: 12px;
-    padding: 10px 14px;
-    color: #6a7590;
+    padding: 14px 18px;
+    color: #b8c4d6;
     font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
     font-size: 12px;
     line-height: 1.6;
@@ -851,6 +889,14 @@ class BotWorker(QThread):
         # before it even starts — clear it pre-emptively.
         self._clear_lock("pre-run sweep")
 
+        # Force the child Python's stdio to UTF-8 — otherwise on Russian
+        # Windows the bot's print() goes out as cp1251 and shows up here as
+        # `���������` garbage. PYTHONIOENCODING handles stdout/stderr; we
+        # also nudge the encoder to never crash on a stray glyph.
+        child_env = os.environ.copy()
+        child_env["PYTHONIOENCODING"] = "utf-8:replace"
+        child_env["PYTHONUTF8"]       = "1"
+
         try:
             self.log.emit(f"[exec] {' '.join(cmd)}")
             self._proc = subprocess.Popen(
@@ -864,6 +910,7 @@ class BotWorker(QThread):
                 errors="replace",
                 bufsize=1,
                 creationflags=creationflags,
+                env=child_env,
             )
             assert self._proc.stdout is not None
             for line in self._proc.stdout:
@@ -971,11 +1018,22 @@ class WizardPage(QWidget):
         p0l.addWidget(self._token_in)
         self._inputs.addWidget(p0)
 
-        # page 1 — channel + playlist
-        p1 = QWidget(); p1l = QVBoxLayout(p1); p1l.setContentsMargins(0,0,0,0); p1l.setSpacing(10)
-        self._chan_in  = QLineEdit();  self._chan_in.setMinimumHeight(46)
-        self._plist_in = QLineEdit();  self._plist_in.setMinimumHeight(46)
-        p1l.addWidget(self._chan_in); p1l.addWidget(self._plist_in)
+        # page 1 — dynamic list of channel + playlist pairs
+        p1 = QWidget()
+        self._p1_layout = QVBoxLayout(p1)
+        self._p1_layout.setContentsMargins(0, 0, 0, 0)
+        self._p1_layout.setSpacing(10)
+        self._pair_rows: list[dict] = []  # each {"frame", "chan", "plist", "remove"}
+        self._pairs_container = QWidget()
+        self._pairs_layout = QVBoxLayout(self._pairs_container)
+        self._pairs_layout.setContentsMargins(0, 0, 0, 0)
+        self._pairs_layout.setSpacing(10)
+        self._p1_layout.addWidget(self._pairs_container)
+        self._add_pair_btn = NeonButton("", style="glass")
+        self._add_pair_btn.setMinimumHeight(38)
+        self._add_pair_btn.clicked.connect(lambda: self._add_pair())
+        self._p1_layout.addWidget(self._add_pair_btn)
+        self._add_pair()  # start with one empty pair
         self._inputs.addWidget(p1)
 
         # page 2 — review
@@ -1052,8 +1110,8 @@ class WizardPage(QWidget):
             self._howto_lbl.setVisible(False)
 
         self._token_in.setPlaceholderText(tr("w.step1.input.placeholder"))
-        self._chan_in.setPlaceholderText(tr("w.step2.chan.placeholder"))
-        self._plist_in.setPlaceholderText(tr("w.step2.plist.placeholder"))
+        self._add_pair_btn.setText(tr("w.step2.add"))
+        self._renumber_pairs()  # refreshes placeholder text + pair labels
 
         self._inputs.setCurrentIndex(self._step)
         self._back_btn.setVisible(self._step > 0)
@@ -1062,13 +1120,15 @@ class WizardPage(QWidget):
         self._status.setText("")
 
         if self._step == 2 and self._channels:
-            ch = self._channels[0]
             token_preview = self._token[:12] + "…" if len(self._token) > 12 else self._token
-            self._review_lbl.setText(
-                f"<b style='color:{WHITE}'>{tr('w.review.token')}:</b> <code>{token_preview}</code><br>"
-                f"<b style='color:{WHITE}'>{tr('w.review.channel')}:</b> {ch['channel']}<br>"
-                f"<b style='color:{WHITE}'>{tr('w.review.playlist')}:</b> {ch['playlist'][:55]}…"
-            )
+            html = [f"<b style='color:{WHITE}'>{tr('w.review.token')}:</b> <code>{token_preview}</code>"]
+            for i, ch in enumerate(self._channels, start=1):
+                html.append(
+                    f"<br><br><b style='color:{CYAN}'>{tr('w.step2.pair', i)}</b><br>"
+                    f"<b style='color:{WHITE}'>{tr('w.review.channel')}:</b> {ch['channel']}<br>"
+                    f"<b style='color:{WHITE}'>{tr('w.review.playlist')}:</b> <code>{ch['playlist']}</code>"
+                )
+            self._review_lbl.setText("".join(html))
 
     # Old name kept for the internal navigation callers
     def _refresh(self) -> None:
@@ -1078,6 +1138,59 @@ class WizardPage(QWidget):
         if self._step > 0:
             self._step -= 1
             self._refresh()
+
+    # ── multi-pair management for step 2 ──────────────────────────────
+    def _add_pair(self, channel: str = "", playlist: str = "") -> None:
+        frame = QFrame()
+        frame.setStyleSheet(
+            "QFrame { background: rgba(255,255,255,4);"
+            " border: 1px solid rgba(255,255,255,10);"
+            " border-radius: 12px; }")
+        lay = QVBoxLayout(frame)
+        lay.setContentsMargins(14, 12, 14, 14)
+        lay.setSpacing(8)
+
+        header = QHBoxLayout()
+        idx_lbl = QLabel()
+        idx_lbl.setStyleSheet(
+            f"color: {CYAN}; font-size: 10px; font-weight: 700; letter-spacing: 2px;")
+        header.addWidget(idx_lbl)
+        header.addStretch()
+        remove_btn = QPushButton()
+        remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        remove_btn.setFixedSize(QSize(28, 24))
+        remove_btn.setStyleSheet(
+            f"QPushButton {{ color: {MAGENTA}; background: rgba(247,37,133,12);"
+            f" border: 1px solid rgba(247,37,133,30); border-radius: 8px;"
+            f" font-size: 16px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background: rgba(247,37,133,24); }}")
+        header.addWidget(remove_btn)
+        lay.addLayout(header)
+
+        chan = QLineEdit(channel);   chan.setMinimumHeight(42)
+        plist = QLineEdit(playlist); plist.setMinimumHeight(42)
+        lay.addWidget(chan); lay.addWidget(plist)
+
+        row = {"frame": frame, "idx_lbl": idx_lbl,
+               "chan": chan, "plist": plist, "remove": remove_btn}
+        remove_btn.clicked.connect(lambda: self._remove_pair(row))
+        self._pair_rows.append(row)
+        self._pairs_layout.addWidget(frame)
+        self._renumber_pairs()
+
+    def _remove_pair(self, row: dict) -> None:
+        if len(self._pair_rows) <= 1:
+            return  # keep at least one pair
+        self._pair_rows.remove(row)
+        row["frame"].deleteLater()
+        self._renumber_pairs()
+
+    def _renumber_pairs(self) -> None:
+        for i, row in enumerate(self._pair_rows, start=1):
+            row["idx_lbl"].setText(tr("w.step2.pair", i))
+            row["chan"].setPlaceholderText(tr("w.step2.chan.placeholder"))
+            row["plist"].setPlaceholderText(tr("w.step2.plist.placeholder"))
+            row["remove"].setVisible(len(self._pair_rows) > 1)
 
     def _next(self) -> None:
         if self._step == 0:
@@ -1089,15 +1202,19 @@ class WizardPage(QWidget):
             self._step = 1
 
         elif self._step == 1:
-            ch = self._chan_in.text().strip()
-            pl = self._plist_in.text().strip()
-            if not ch.startswith("@"):
-                self._err(tr("w.err.channel"))
-                return
-            if not pl:
-                self._err(tr("w.err.playlist"))
-                return
-            self._channels = [{"channel": ch, "playlist": pl}]
+            channels: list[dict] = []
+            for i, row in enumerate(self._pair_rows, start=1):
+                chan  = normalise_handle(row["chan"].text())
+                plist = extract_playlist_id(row["plist"].text())
+                raw_chan = row["chan"].text().strip()
+                if not raw_chan or not chan.startswith("@"):
+                    self._err(tr("w.err.channel") + f"  ({tr('w.step2.pair', i)})")
+                    return
+                if not plist:
+                    self._err(tr("w.err.playlist") + f"  ({tr('w.step2.pair', i)})")
+                    return
+                channels.append({"channel": chan, "playlist": plist})
+            self._channels = channels
             self._step = 2
 
         elif self._step == 2:
@@ -1112,14 +1229,14 @@ class WizardPage(QWidget):
         self._status.setText(msg)
 
     def _save(self) -> None:
-        ch = self._channels[0] if self._channels else {}
-        lines = [
-            f"TELEGRAM_BOT_TOKEN={self._token}",
-            f"CHANNEL_1_NAME=channel1",
-            f"CHANNEL_1_PLAYLIST={ch.get('playlist', '')}",
-            f"CHANNEL_1_TELEGRAM={ch.get('channel', '')}",
-        ]
-        ENV_PATH.write_text("\n".join(lines), encoding="utf-8")
+        lines = [f"TELEGRAM_BOT_TOKEN={self._token}"]
+        for i, ch in enumerate(self._channels, start=1):
+            # NB: PLAYLIST stores the *bare* PL... ID, not the full URL —
+            # the bot reconstructs `https://www.youtube.com/playlist?list={id}`.
+            lines.append(f"CHANNEL_{i}_NAME=channel{i}")
+            lines.append(f"CHANNEL_{i}_PLAYLIST={ch.get('playlist', '')}")
+            lines.append(f"CHANNEL_{i}_TELEGRAM={ch.get('channel', '')}")
+        ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1185,7 +1302,7 @@ class DashboardPage(QWidget):
         # ── log ───────────────────────────────────────────────────────
         log_hdr = QHBoxLayout()
         self._log_title = QLabel()
-        self._log_title.setStyleSheet(f"color: {MUTED}; font-size: 10px;"
+        self._log_title.setStyleSheet(f"color: {WHITE}; font-size: 13px;"
                                 " letter-spacing: 3px; font-weight: 700;")
         self._btn_clear = QPushButton()
         self._btn_clear.setStyleSheet(
@@ -1232,15 +1349,17 @@ class DashboardPage(QWidget):
     # ── stat card helper ──────────────────────────────────────────────
     def _stat_card(self, row: QHBoxLayout, color: str) -> tuple[QLabel, QLabel]:
         card = GlassCard()
-        card.setMinimumHeight(68)
+        card.setMinimumHeight(86)
         cl = QVBoxLayout(card); cl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cl.setSpacing(4)
         num = QLabel("0")
-        num.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
+        num.setFont(QFont("Segoe UI", 28, QFont.Weight.Bold))
         num.setAlignment(Qt.AlignmentFlag.AlignCenter)
         num.setStyleSheet(f"color: {color};")
         lbl = QLabel("")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {TEXT}; font-size: 10px; letter-spacing: 2px;")
+        lbl.setStyleSheet(f"color: {WHITE}; font-size: 13px;"
+                          " font-weight: 600; letter-spacing: 2.5px;")
         cl.addWidget(num); cl.addWidget(lbl)
         row.addWidget(card)
         return num, lbl

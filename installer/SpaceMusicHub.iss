@@ -3,7 +3,7 @@
 ;  Compile with:  "C:\Program Files (x86)\Inno Setup 6\iscc.exe" SpaceMusicHub.iss
 ; =====================================================================
 #define MyAppName          "Space Music Hub"
-#define MyAppVersion       "1.7.8"
+#define MyAppVersion       "1.7.9"
 #define MyAppPublisher     "Andrejs Avlasins"
 #define MyAppURL           "https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram"
 #define MyAppExeName       "SpaceMusicHub.exe"
