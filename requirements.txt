@@ -2,3 +2,4 @@ python-telegram-bot==21.6
 yt-dlp>=2025.1.15        # floor only — a fresh install always pulls the latest
 python-dotenv==1.0.1
 ffmpeg-downloader>=0.3.0  # optional: auto-downloads ffmpeg binary if not on PATH
+PyQt6>=6.7.0              # GUI app (gui_app.py)
