@@ -26,7 +26,7 @@ from PyQt6.QtGui import (
     QPainter, QPainterPath, QPen,
 )
 from PyQt6.QtWidgets import (
-    QApplication, QFrame, QGraphicsDropShadowEffect,
+    QApplication, QCheckBox, QFrame, QGraphicsDropShadowEffect,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
     QProgressBar, QPushButton, QScrollBar, QSizePolicy, QStackedWidget,
     QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget,
@@ -888,9 +888,9 @@ class GlassCard(QFrame):
         # the log area.
         self.setStyleSheet("""
             QFrame {
-                background: rgba(10,13,22,170);
-                border: 1px solid rgba(255,255,255,18);
-                border-radius: 18px;
+                background: rgba(8,11,18,212);
+                border: 1px solid rgba(255,255,255,20);
+                border-radius: 14px;
             }
         """)
 
@@ -1421,7 +1421,10 @@ class WizardPage(QWidget):
         header.addWidget(remove_btn)
         lay.addLayout(header)
 
+        # A channel handle is short — cap its width. A playlist URL can be
+        # long, so it stays full-width. Different content → different size.
         chan = QLineEdit(channel);   chan.setMinimumHeight(42)
+        chan.setMaximumWidth(300)
         plist = QLineEdit(playlist); plist.setMinimumHeight(42)
         lay.addWidget(chan); lay.addWidget(plist)
 
@@ -1553,9 +1556,18 @@ class DashboardPage(QWidget):
         self.retranslate()
 
     def _build(self) -> None:
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(32, 16, 32, 20)
-        lay.setSpacing(14)
+        # Cap the content to a centred column so nothing stretches edge to
+        # edge on a wide / 4K window — content defines width, not the screen.
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addStretch()
+        col = QWidget()
+        col.setMaximumWidth(820)
+        outer.addWidget(col, 0, Qt.AlignmentFlag.AlignTop)
+        outer.addStretch()
+        lay = QVBoxLayout(col)
+        lay.setContentsMargins(24, 14, 24, 18)
+        lay.setSpacing(12)
 
         # ── header row ────────────────────────────────────────────────
         hdr = QHBoxLayout()
@@ -1617,7 +1629,7 @@ class DashboardPage(QWidget):
         ]
         sched_card = GlassCard()
         sc = QVBoxLayout(sched_card)
-        sc.setContentsMargins(18, 14, 18, 14); sc.setSpacing(10)
+        sc.setContentsMargins(16, 12, 16, 12); sc.setSpacing(8)
 
         self._sched_title = QLabel()
         self._sched_title.setStyleSheet(
@@ -1653,13 +1665,20 @@ class DashboardPage(QWidget):
         pill_row.addWidget(self._sched_now)
         sc.addLayout(pill_row)
 
-        # autostart checkbox-style button
-        self._sched_auto = QPushButton("")
+        # autostart — a real compact checkbox, sized to its label
+        auto_row = QHBoxLayout()
+        self._sched_auto = QCheckBox("")
         self._sched_auto.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._sched_auto.setCheckable(True)
-        self._sched_auto.setMinimumHeight(34)
-        self._sched_auto.clicked.connect(self._toggle_autostart)
-        sc.addWidget(self._sched_auto)
+        self._sched_auto.setStyleSheet(
+            f"QCheckBox {{ color: {WHITE}; font-size: 12px; spacing: 8px; }}"
+            f"QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px;"
+            f"  border: 1px solid rgba(255,255,255,28); background: rgba(255,255,255,6); }}"
+            f"QCheckBox::indicator:checked {{ background: {CYAN};"
+            f"  border: 1px solid {CYAN}; }}")
+        self._sched_auto.toggled.connect(self._toggle_autostart)
+        auto_row.addWidget(self._sched_auto)
+        auto_row.addStretch()
+        sc.addLayout(auto_row)
 
         self._sched_hint = QLabel()
         self._sched_hint.setWordWrap(True)
@@ -1709,8 +1728,8 @@ class DashboardPage(QWidget):
         # ── inline "Add another channel + playlist" panel ─────────────
         self._add_card = GlassCard()
         add_lay = QVBoxLayout(self._add_card)
-        add_lay.setContentsMargins(18, 14, 18, 14)
-        add_lay.setSpacing(8)
+        add_lay.setContentsMargins(16, 12, 16, 12)
+        add_lay.setSpacing(7)
 
         self._add_title = QLabel()
         self._add_title.setStyleSheet(
@@ -1724,12 +1743,14 @@ class DashboardPage(QWidget):
 
         add_row = QHBoxLayout(); add_row.setSpacing(8)
         self._add_chan  = QLineEdit(); self._add_chan.setMinimumHeight(38)
+        self._add_chan.setMaximumWidth(220)   # short handle, capped
         self._add_plist = QLineEdit(); self._add_plist.setMinimumHeight(38)
         self._add_btn   = NeonButton("", style="cyan")
         self._add_btn.setMinimumHeight(38)
+        self._add_btn.setMaximumWidth(130)
         self._add_btn.clicked.connect(self._add_inline_pair)
-        add_row.addWidget(self._add_chan, 2)
-        add_row.addWidget(self._add_plist, 3)
+        add_row.addWidget(self._add_chan, 0)
+        add_row.addWidget(self._add_plist, 1)   # URL takes the remaining space
         add_row.addWidget(self._add_btn, 0)
         add_lay.addLayout(add_row)
 
@@ -1828,20 +1849,20 @@ class DashboardPage(QWidget):
     # ── stat card helper ──────────────────────────────────────────────
     def _stat_card(self, row: QHBoxLayout, color: str) -> tuple[QLabel, QLabel]:
         card = GlassCard()
-        # Fixed compact size so the three cards are equal and hug their
-        # content instead of stretching across the whole row.
-        card.setFixedSize(QSize(150, 80))
+        # Small fixed size — content (a number + a short word) defines it,
+        # not the available row width.
+        card.setFixedSize(QSize(118, 60))
         cl = QVBoxLayout(card); cl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cl.setContentsMargins(8, 8, 8, 8)
-        cl.setSpacing(2)
+        cl.setContentsMargins(6, 5, 6, 5)
+        cl.setSpacing(0)
         num = QLabel("0")
-        num.setFont(QFont("Segoe UI", 26, QFont.Weight.Bold))
+        num.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         num.setAlignment(Qt.AlignmentFlag.AlignCenter)
         num.setStyleSheet(f"color: {color};")
         lbl = QLabel("")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {WHITE}; font-size: 12px;"
-                          " font-weight: 600; letter-spacing: 1.5px;")
+        lbl.setStyleSheet(f"color: {TEXT}; font-size: 10px;"
+                          " font-weight: 600; letter-spacing: 1px;")
         cl.addWidget(num); cl.addWidget(lbl)
         row.addWidget(card)
         return num, lbl
@@ -1914,17 +1935,12 @@ class DashboardPage(QWidget):
                 f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
                 f"  border-radius: 8px; padding: 2px 14px; font-size: 12px; font-weight: 700; }}"
                 f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
-        # autostart toggle visual
-        on = autostart_enabled()
-        self._sched_auto.setChecked(on)
-        check = "☑" if on else "☐"
-        self._sched_auto.setText(f"  {check}  {tr('d.sched.autostart')}")
-        self._sched_auto.setStyleSheet(
-            f"QPushButton {{ text-align: left; color: {WHITE};"
-            f"  background: {'rgba(0,212,255,12)' if on else 'rgba(255,255,255,5)'};"
-            f"  border: 1px solid {'rgba(0,212,255,40)' if on else 'rgba(255,255,255,12)'};"
-            f"  border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(0,212,255,18); }}")
+        # autostart checkbox — reflect current registry state without
+        # re-triggering the toggled signal
+        self._sched_auto.blockSignals(True)
+        self._sched_auto.setChecked(autostart_enabled())
+        self._sched_auto.blockSignals(False)
+        self._sched_auto.setText(tr("d.sched.autostart"))
 
     def _set_interval(self, secs: int) -> None:
         self._sched_secs = secs
@@ -1934,10 +1950,12 @@ class DashboardPage(QWidget):
         self._sched_status.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
         self._sched_status.setText(tr("d.sched.saved", label))
 
-    def _toggle_autostart(self) -> None:
-        new_state = not autostart_enabled()
-        set_autostart(new_state)
-        self._restyle_sched()
+    def _toggle_autostart(self, checked: bool) -> None:
+        set_autostart(checked)
+        # Re-sync from the registry in case the write was rejected
+        self._sched_auto.blockSignals(True)
+        self._sched_auto.setChecked(autostart_enabled())
+        self._sched_auto.blockSignals(False)
 
     def _toggle_mode(self) -> None:
         self._simple_mode = not self._simple_mode
@@ -2134,7 +2152,7 @@ class MainWindow(QMainWindow):
 
         # Dark overlay (z=1)
         self._overlay = QWidget(central)
-        self._overlay.setStyleSheet("background: rgba(5,5,5,160);")
+        self._overlay.setStyleSheet("background: rgba(5,5,5,190);")
         self._overlay.setGeometry(0, 0, self.width(), self.height())
 
         # Content layer (z=2) — holds nav + page stack
