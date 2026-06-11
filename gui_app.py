@@ -65,6 +65,12 @@ VIDEO_PATHS = [
     BASE_DIR / "docs" / "bg.mp4",
 ]
 
+# Bot's single-instance lock — bot writes this in _app_dir() while a
+# Run/Watch is active, and removes it in a `finally` block. If we
+# TerminateProcess the bot subprocess, that finally never runs, so we
+# clean it up from the GUI side as well.
+LOCK_PATH = BASE_DIR / "bot.lock"
+
 # True when launched with --tray (auto-start / background mode)
 START_HIDDEN = "--tray" in sys.argv
 
@@ -415,8 +421,43 @@ class BotWorker(QThread):
         self._proc: subprocess.Popen | None = None
 
     def stop(self) -> None:
-        if self._proc and self._proc.poll() is None:
-            self._proc.terminate()
+        """Stop the bot subprocess.
+
+        Note: the bot runs without a console window (CREATE_NO_WINDOW),
+        so Windows console control signals (CTRL_BREAK / CTRL_C) cannot
+        be delivered to it — they require an attached console. We just
+        terminate, then sweep the lock ourselves. The bot saves
+        sent_videos.json after each posted track, so abrupt termination
+        only loses the currently-downloading track at worst.
+        """
+        proc = self._proc
+        if not proc or proc.poll() is not None:
+            self._clear_lock("stop called but no live process")
+            return
+
+        self.log.emit("[stop] Terminating bot subprocess...")
+        try:
+            proc.terminate()
+        except Exception as exc:                    # noqa: BLE001
+            self.log.emit(f"[stop] terminate() failed: {exc}")
+        try:
+            proc.wait(timeout=4)
+        except subprocess.TimeoutExpired:
+            self.log.emit("[stop] Still alive after 4s — hard kill.")
+            try: proc.kill()
+            except Exception: pass
+
+        # Bot's `finally` block doesn't run on TerminateProcess, so the
+        # lock file would otherwise stay and block the next Watch.
+        self._clear_lock("post-stop sweep")
+
+    def _clear_lock(self, reason: str) -> None:
+        if LOCK_PATH.exists():
+            try:
+                LOCK_PATH.unlink()
+                self.log.emit(f"[stop] Cleared bot.lock ({reason}).")
+            except OSError as exc:
+                self.log.emit(f"[stop] Could not clear bot.lock: {exc}")
 
     def run(self) -> None:
         flag = self._MODE_FLAG.get(self.mode)
@@ -432,11 +473,19 @@ class BotWorker(QThread):
         else:
             cmd = [sys.executable, str(Path(__file__).resolve()), flag]
 
-        # Don't pop up a console window on Windows when the GUI subprocess
-        # spawns the bot worker.
+        # On Windows: CREATE_NEW_PROCESS_GROUP is required so we can send
+        # CTRL_BREAK_EVENT to the bot subprocess from .stop() — otherwise
+        # the signal goes nowhere. CREATE_NO_WINDOW hides any console flash.
         creationflags = 0
         if sys.platform == "win32":
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            creationflags = (
+                getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+            )
+
+        # A stale lock from a previous abrupt kill would block this run
+        # before it even starts — clear it pre-emptively.
+        self._clear_lock("pre-run sweep")
 
         try:
             self.log.emit(f"[exec] {' '.join(cmd)}")
@@ -457,10 +506,13 @@ class BotWorker(QThread):
                 if line:
                     self.log.emit(line.rstrip())
             self._proc.wait()
+            # Final sweep — even on clean exit, double-check the lock is gone.
+            self._clear_lock("post-run sweep")
             self.done.emit(self._proc.returncode == 0)
 
         except Exception as exc:                  # noqa: BLE001
             self.log.emit(f"[ERROR] {exc}")
+            self._clear_lock("error sweep")
             self.done.emit(False)
 
 
