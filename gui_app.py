@@ -265,6 +265,9 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Отправлено: {0}",
         "d.s.error":      "✗ Ошибка (переключи на «Эксперт» для подробностей)",
         "d.s.done":       "Готово",
+        # Bitrate selector
+        "d.bitrate":      "Качество MP3:",
+        "d.bitrate.hint": "Применится к новым загрузкам. 320 — крупнее файлы; YouTube-звук обычно ~128–160, так что 192 — золотая середина.",
         "d.log.title":    "ЖУРНАЛ",
         "d.log.clear":    "очистить",
         "d.ready":        "Space Music Hub GUI готов.",
@@ -379,6 +382,8 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Posted: {0}",
         "d.s.error":      "✗ Error (switch to “Expert” for details)",
         "d.s.done":       "Done",
+        "d.bitrate":      "MP3 quality:",
+        "d.bitrate.hint": "Applies to new downloads. 320 = bigger files; YouTube audio is usually ~128–160, so 192 is the sweet spot.",
         "d.log.title":    "LOG OUTPUT",
         "d.log.clear":    "clear",
         "d.ready":        "Space Music Hub GUI ready.",
@@ -488,6 +493,8 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Publicēts: {0}",
         "d.s.error":      "✗ Kļūda (pārslēdz uz “Eksperts”, lai redzētu detaļas)",
         "d.s.done":       "Pabeigts",
+        "d.bitrate":      "MP3 kvalitāte:",
+        "d.bitrate.hint": "Attiecas uz jaunām lejupielādēm. 320 = lielāki faili; YouTube skaņa parasti ~128–160, tāpēc 192 ir optimāli.",
         "d.log.title":    "ŽURNĀLS",
         "d.log.clear":    "tīrīt",
         "d.ready":        "Space Music Hub GUI gatavs.",
@@ -555,6 +562,34 @@ def normalise_handle(text: str) -> str:
         text = link.group(1)
     text = text.lstrip("@")
     return f"@{text}" if text else ""
+
+
+def read_env_value(key: str, default: str = "") -> str:
+    """Read a single KEY=value from .env, or *default* if missing."""
+    if not ENV_PATH.exists():
+        return default
+    for line in ENV_PATH.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1].strip()
+    return default
+
+
+def set_env_value(key: str, value: str) -> None:
+    """Update KEY=value in .env in place, or append it if not present."""
+    lines: list[str] = []
+    if ENV_PATH.exists():
+        lines = ENV_PATH.read_text(encoding="utf-8", errors="ignore").splitlines()
+    out, found = [], False
+    for line in lines:
+        if line.strip().startswith(f"{key}="):
+            out.append(f"{key}={value}")
+            found = True
+        else:
+            out.append(line)
+    if not found:
+        out.append(f"{key}={value}")
+    ENV_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 # ── Global stylesheet ─────────────────────────────────────────────────
@@ -1452,6 +1487,30 @@ class DashboardPage(QWidget):
             btn_row.addWidget(b)
         lay.addLayout(btn_row)
 
+        # ── MP3 bitrate selector ──────────────────────────────────────
+        br_row = QHBoxLayout(); br_row.setSpacing(8)
+        self._br_label = QLabel()
+        self._br_label.setStyleSheet(f"color: {WHITE}; font-size: 12px; font-weight: 600;")
+        br_row.addWidget(self._br_label)
+        self._bitrate = read_env_value("AUDIO_BITRATE", "192")
+        if self._bitrate not in ("128", "192", "320"):
+            self._bitrate = "192"
+        self._br_btns: dict[str, QPushButton] = {}
+        for rate in ("128", "192", "320"):
+            b = QPushButton(f"{rate}")
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setCheckable(True)
+            b.setFixedSize(QSize(56, 30))
+            b.clicked.connect(lambda _, r=rate: self._set_bitrate(r))
+            self._br_btns[rate] = b
+            br_row.addWidget(b)
+        self._br_hint = QLabel()
+        self._br_hint.setWordWrap(True)
+        self._br_hint.setStyleSheet(f"color: {TEXT}; font-size: 10px; font-style: italic;")
+        br_row.addWidget(self._br_hint, 1)
+        lay.addLayout(br_row)
+        self._restyle_bitrate()
+
         # ── progress bar (visible only during a run) ──────────────────
         self._progress = QProgressBar()
         self._progress.setMinimumHeight(22)
@@ -1580,6 +1639,8 @@ class DashboardPage(QWidget):
         self._lbl_session.setText(tr("d.stat.runs"))
         self._log_title.setText(tr("d.log.title"))
         self._btn_clear.setText(tr("d.log.clear"))
+        self._br_label.setText(tr("d.bitrate"))
+        self._br_hint.setText(tr("d.bitrate.hint"))
         self._restyle_mode_btn()
         # Inline add-pair card
         self._add_title.setText(tr("d.add.title"))
@@ -1662,6 +1723,24 @@ class DashboardPage(QWidget):
             f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
             f"  border-radius: 8px; padding: 2px 12px; font-size: 11px; font-weight: 700; }}"
             f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
+
+    # ── bitrate ───────────────────────────────────────────────────────
+    def _restyle_bitrate(self) -> None:
+        for rate, btn in self._br_btns.items():
+            on = (rate == self._bitrate)
+            btn.setChecked(on)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {'#020202' if on else WHITE};"
+                f"  background: {CYAN if on else 'rgba(255,255,255,6)'};"
+                f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
+                f"  border-radius: 8px; font-size: 12px; font-weight: 700; }}"
+                f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
+
+    def _set_bitrate(self, rate: str) -> None:
+        self._bitrate = rate
+        self._restyle_bitrate()
+        set_env_value("AUDIO_BITRATE", rate)
+        self._log_line(f"[cfg] MP3 = {rate} kbps", system=True)
 
     def _toggle_mode(self) -> None:
         self._simple_mode = not self._simple_mode

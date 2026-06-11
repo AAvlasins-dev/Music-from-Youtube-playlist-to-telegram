@@ -197,6 +197,13 @@ RETRY_ATTEMPTS: int = int(os.getenv("RETRY_ATTEMPTS", "3"))
 RETRY_DELAY: float = float(os.getenv("RETRY_DELAY", "5"))
 POST_DELAY: float = float(os.getenv("POST_DELAY", "2"))
 
+# MP3 quality for the ffmpeg transcode. Settable from the GUI; only the
+# three common rates are accepted, anything else falls back to 192.
+_ALLOWED_BITRATES = {"128", "192", "320"}
+AUDIO_BITRATE: str = os.getenv("AUDIO_BITRATE", "192").strip()
+if AUDIO_BITRATE not in _ALLOWED_BITRATES:
+    AUDIO_BITRATE = "192"
+
 # Telegram bot API hard limit for uploaded audio. Files above this can never
 # be sent, so we skip + record them rather than retrying forever. Leave a
 # small margin below the real 50 MB ceiling for protocol overhead.
@@ -516,7 +523,7 @@ def _download_audio(video_id: str) -> str:
             {
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": "mp3",
-                "preferredquality": "192",
+                "preferredquality": AUDIO_BITRATE,
             }
         ]
     else:
