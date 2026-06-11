@@ -11,9 +11,7 @@ Requires:
 from __future__ import annotations
 
 import datetime
-import math
 import os
-import random
 import subprocess
 import sys
 from pathlib import Path
@@ -598,64 +596,34 @@ class StaticBackgroundWidget(QWidget):
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Equalizer  (custom QPainter widget)
+#  NeonDivider  (static gradient line — replaces the old animated equalizer)
 # ══════════════════════════════════════════════════════════════════════
-class EqualizerWidget(QWidget):
-    """Animated neon equalizer bars — idle shimmer → active dance."""
+class NeonDivider(QWidget):
+    """A thin static magenta→purple→cyan glow line.
 
-    def __init__(self, bars: int = 32, parent: QWidget | None = None) -> None:
+    Replaces the former EqualizerWidget, whose QTimer repainted 34 gradient
+    bars at ~33 fps non-stop — even idle and even minimised to the tray —
+    burning a CPU/GPU slice 24/7. This draws once and never animates.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._bars   = bars
-        self._t      = 0.0
-        self._active = False
-        self._phases = [random.uniform(0, math.pi * 2) for _ in range(bars)]
-        self._speeds = [random.uniform(0.035, 0.085)   for _ in range(bars)]
-
-        self.setFixedHeight(60)
+        self.setFixedHeight(3)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick)
-        self._timer.start(30)  # ~33 fps
-
-    def set_active(self, active: bool) -> None:
-        self._active = active
-
-    def _tick(self) -> None:
-        self._t += 1.0
-        self.update()
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        w, h = self.width(), self.height()
-        gap   = 4
-        bar_w = max(4, (w - (self._bars - 1) * gap) // self._bars)
-
-        for i in range(self._bars):
-            phase = self._t * self._speeds[i] + self._phases[i]
-            if self._active:
-                val = 0.25 + 0.75 * abs(math.sin(phase))
-            else:
-                val = 0.07 + 0.09 * abs(math.sin(phase * 0.4))
-
-            bh = max(3, int(val * h))
-            x  = i * (bar_w + gap)
-            y  = h - bh
-
-            g = QLinearGradient(x, float(y + bh), x, float(y))
-            g.setColorAt(0.0, QColor(MAGENTA))
-            g.setColorAt(0.5, QColor(PURPLE))
-            g.setColorAt(1.0, QColor(CYAN))
-
-            path = QPainterPath()
-            path.addRoundedRect(float(x), float(y), float(bar_w), float(bh), 2.0, 2.0)
-            p.setBrush(QBrush(g))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.drawPath(path)
-
+        g = QLinearGradient(0.0, 0.0, float(self.width()), 0.0)
+        g.setColorAt(0.0, QColor(MAGENTA))
+        g.setColorAt(0.5, QColor(PURPLE))
+        g.setColorAt(1.0, QColor(CYAN))
+        path = QPainterPath()
+        path.addRoundedRect(0.0, 0.0, float(self.width()), float(self.height()), 1.5, 1.5)
+        p.setBrush(QBrush(g))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawPath(path)
         p.end()
 
 
@@ -1300,9 +1268,9 @@ class DashboardPage(QWidget):
         hdr.addWidget(self._env_lbl)
         lay.addLayout(hdr)
 
-        # ── equalizer ─────────────────────────────────────────────────
-        self._eq = EqualizerWidget(bars=34)
-        lay.addWidget(self._eq)
+        # ── static neon divider (replaces the animated equalizer) ─────
+        divider = NeonDivider()
+        lay.addWidget(divider)
 
         # ── action buttons + one-line hints under each ────────────────
         btn_row = QHBoxLayout(); btn_row.setSpacing(10)
@@ -1395,6 +1363,9 @@ class DashboardPage(QWidget):
         self._log = QTextEdit()
         self._log.setReadOnly(True)
         self._log.setMinimumHeight(160)
+        # Bound memory on multi-hour Watch sessions — keep only the last
+        # 2000 lines instead of letting the document grow unbounded.
+        self._log.document().setMaximumBlockCount(2000)
         lay.addWidget(self._log)
 
         # ── wiring ────────────────────────────────────────────────────
@@ -1469,8 +1440,13 @@ class DashboardPage(QWidget):
 
         self._session_runs += 1
         self._n_session.setText(str(self._session_runs))
+        # Reset per-run counters so the numbers reflect THIS run, not a
+        # cumulative total across every run of the session.
+        self._posted = 0
+        self._failed = 0
+        self._n_posted.setText("0")
+        self._n_failed.setText("0")
         self._status_badge.set_running()
-        self._eq.set_active(True)
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(False)
         self._stop_box.setVisible(True)
@@ -1483,7 +1459,6 @@ class DashboardPage(QWidget):
         self._on_done(True)
 
     def _on_done(self, ok: bool) -> None:
-        self._eq.set_active(False)
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(True)
         self._stop_box.setVisible(False)

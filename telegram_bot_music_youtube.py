@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import html
 import json
 import logging
 import logging.handlers
@@ -134,17 +135,54 @@ _formatter = logging.Formatter(
     fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+
+class _TokenMaskFilter(logging.Filter):
+    """Redact Telegram bot tokens from every log record.
+
+    The python-telegram-bot/httpx stack logs request URLs like
+    ``https://api.telegram.org/bot<digits>:<secret>/getMe`` at INFO level.
+    Without this filter the token would land in bot.log (on disk) and in
+    the GUI log panel in clear text. We rewrite the secret to ``***``.
+    """
+
+    _RX = re.compile(r"(bot\d{6,}:)[A-Za-z0-9_\-]{10,}")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            if isinstance(record.msg, str):
+                record.msg = self._RX.sub(r"\1***", record.msg)
+            if record.args:
+                record.args = tuple(
+                    self._RX.sub(r"\1***", a) if isinstance(a, str) else a
+                    for a in record.args
+                )
+        except Exception:  # noqa: BLE001 — never let logging crash the app
+            pass
+        return True
+
+
+_mask_filter = _TokenMaskFilter()
 _file_handler = logging.handlers.RotatingFileHandler(
     LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
 )
 _file_handler.setFormatter(_formatter)
+_file_handler.addFilter(_mask_filter)
 _console_handler = logging.StreamHandler()
 _console_handler.setFormatter(_formatter)
+_console_handler.addFilter(_mask_filter)
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
     handlers=[_file_handler, _console_handler],
 )
+
+# Third-party HTTP/Telegram loggers are chatty and (worse) put the bot
+# token in their request URLs — keep them at WARNING so they stay quiet
+# and never out-log our own messages.
+for _noisy in ("httpx", "httpcore", "telegram", "telegram.ext"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -158,6 +196,11 @@ YOUTUBE_COOKIES_FILE: str = os.getenv("YOUTUBE_COOKIES_FILE", "")
 RETRY_ATTEMPTS: int = int(os.getenv("RETRY_ATTEMPTS", "3"))
 RETRY_DELAY: float = float(os.getenv("RETRY_DELAY", "5"))
 POST_DELAY: float = float(os.getenv("POST_DELAY", "2"))
+
+# Telegram bot API hard limit for uploaded audio. Files above this can never
+# be sent, so we skip + record them rather than retrying forever. Leave a
+# small margin below the real 50 MB ceiling for protocol overhead.
+_TG_AUDIO_LIMIT_BYTES: int = 49 * 1024 * 1024
 
 
 # ---------------------------------------------------------------------------
@@ -516,7 +559,11 @@ async def _send_audio(
 ) -> Message:
     """Send an MP3 file to *chat_id* with a caption linking back to YouTube."""
     yt_url = f"https://youtu.be/{video_id}"
-    caption = f"🎵 <b>{title}</b>\n\n📺 <a href=\"{yt_url}\">Watch on YouTube</a>"
+    # Escape the title: it comes from YouTube and may contain &, <, > which
+    # would otherwise break Telegram's HTML parser (parse_mode="HTML") and
+    # make the whole send fail — silently dropping that track forever.
+    safe_title = html.escape(title)
+    caption = f"🎵 <b>{safe_title}</b>\n\n📺 <a href=\"{yt_url}\">Watch on YouTube</a>"
     with open(mp3_path, "rb") as audio_file:
         return await bot.send_audio(
             chat_id=chat_id,
@@ -601,6 +648,24 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
             mp3_path = await loop.run_in_executor(
                 _executor, _download_audio, video_id
             )
+
+            # Telegram bot API rejects audio files larger than 50 MB. Such a
+            # track would fail to send on every cycle forever — instead mark
+            # it as handled (skipped) so we don't retry it endlessly.
+            size = os.path.getsize(mp3_path)
+            if size > _TG_AUDIO_LIMIT_BYTES:
+                logger.warning(
+                    "[%s] [%d/%d] Too large for Telegram (%.1f MB > 50 MB), skipping: %s",
+                    channel.name, i, len(new_videos), size / 1_048_576, title,
+                )
+                sent_videos[video_id] = {
+                    "title": title,
+                    "skipped": "too_large",
+                    "size_bytes": size,
+                    "posted_at": datetime.now(UTC).isoformat(),
+                }
+                save_json(channel.sent_videos_file, sent_videos)
+                continue
 
             message = await _send_audio(tg_bot, chat_id, mp3_path, title, video_id)
             sent_videos[video_id] = {
