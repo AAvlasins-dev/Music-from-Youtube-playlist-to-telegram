@@ -20,15 +20,14 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt6.QtCore import (
-    QSize, QTimer, QThread, QUrl,
+    QRectF, QSize, QTimer, QThread, QUrl,
     Qt, pyqtSignal,
 )
 from PyQt6.QtGui import (
-    QBrush, QColor, QFont, QIcon, QLinearGradient,
+    QBrush, QColor, QFont, QIcon, QImage, QLinearGradient,
     QPainter, QPainterPath, QPen,
 )
-from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
-from PyQt6.QtMultimediaWidgets import QVideoWidget
+from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer, QVideoFrame, QVideoSink
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGraphicsDropShadowEffect,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
@@ -173,6 +172,58 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0;
 }}
 """
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Video background  (plain Qt widget — painted via QVideoSink frames)
+# ══════════════════════════════════════════════════════════════════════
+class VideoBackgroundWidget(QWidget):
+    """Loops bg.mp4 as the window background.
+
+    QVideoWidget can't be used here: on Windows it allocates a native
+    HWND surface that renders over every Qt widget, hiding our nav bar
+    and wizard. We render frames manually via QVideoSink so the video
+    is a regular Qt-painted widget that respects z-order.
+    """
+
+    def __init__(self, source_path: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._frame_image: QImage | None = None
+
+        self._sink   = QVideoSink(self)
+        self._audio  = QAudioOutput(self)
+        self._audio.setVolume(0.0)
+        self._player = QMediaPlayer(self)
+        self._player.setVideoSink(self._sink)
+        self._player.setAudioOutput(self._audio)
+        self._sink.videoFrameChanged.connect(self._on_frame)
+
+        self._player.setSource(QUrl.fromLocalFile(source_path))
+        self._player.setLoops(QMediaPlayer.Loops.Infinite)
+        self._player.play()
+
+    def _on_frame(self, frame: QVideoFrame) -> None:
+        if not frame.isValid():
+            return
+        img = frame.toImage()
+        if img.isNull():
+            return
+        self._frame_image = img
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        if self._frame_image is None:
+            return
+        p = QPainter(self)
+        # Letterbox-free: scale to fill window, preserving aspect ratio.
+        w, h = self.width(), self.height()
+        iw, ih = self._frame_image.width(), self._frame_image.height()
+        if iw <= 0 or ih <= 0:
+            return
+        scale = max(w / iw, h / ih)
+        sw, sh = iw * scale, ih * scale
+        x, y = (w - sw) / 2, (h - sh) / 2
+        p.drawImage(QRectF(x, y, sw, sh), self._frame_image)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -889,7 +940,6 @@ class MainWindow(QMainWindow):
 
         self._force_quit = False
         self._setup_layers()
-        self._setup_video()
         self._setup_nav()
         self._setup_pages()
         self._goto_initial()
@@ -905,8 +955,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         central.setStyleSheet(f"background: {BG};")
 
-        # Video layer (z=0)
-        self._vid_widget = QVideoWidget(central)
+        # Video layer (z=0) — pure-Qt painter widget, NOT QVideoWidget
+        video_src = next((vp for vp in VIDEO_PATHS if vp.exists()), None)
+        if video_src is not None:
+            self._vid_widget = VideoBackgroundWidget(str(video_src), central)
+        else:
+            # No video bundled — fall back to a static dark widget
+            self._vid_widget = QWidget(central)
+            self._vid_widget.setStyleSheet(f"background: {BG};")
         self._vid_widget.setGeometry(0, 0, self.width(), self.height())
 
         # Dark overlay (z=1)
@@ -923,19 +979,6 @@ class MainWindow(QMainWindow):
         self._content_lay = QVBoxLayout(self._content)
         self._content_lay.setContentsMargins(0, 0, 0, 0)
         self._content_lay.setSpacing(0)
-
-    def _setup_video(self) -> None:
-        self._player  = QMediaPlayer()
-        self._audio   = QAudioOutput()
-        self._audio.setVolume(0.0)  # muted
-        self._player.setAudioOutput(self._audio)
-        self._player.setVideoOutput(self._vid_widget)
-        for vp in VIDEO_PATHS:
-            if vp.exists():
-                self._player.setSource(QUrl.fromLocalFile(str(vp)))
-                self._player.setLoops(-1)   # infinite
-                self._player.play()
-                break
 
     # ── nav bar ───────────────────────────────────────────────────────
     def _setup_nav(self) -> None:
