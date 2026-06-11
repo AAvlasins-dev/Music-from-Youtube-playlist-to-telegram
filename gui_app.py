@@ -88,6 +88,17 @@ _BOT_MODES = {
 
 
 def _run_bot_mode(mode: str) -> int:
+    # Force this process's stdout/stderr to UTF-8 before the bot prints
+    # anything. In a frozen --noconsole build PYTHONIOENCODING isn't always
+    # honoured, so the bot's Russian text came back to the GUI as U+FFFD
+    # replacement glyphs (the green ◆ in the log). reconfigure() fixes it at
+    # the source; guarded because the streams may not be TextIOWrappers.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except Exception:  # noqa: BLE001
+            pass
+
     # Make the bundled telegram_bot_music_youtube.py importable both
     # in dev (next to gui_app.py) and inside the PyInstaller bundle
     # (extracted into _MEIPASS).
@@ -266,15 +277,6 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Отправлено: {0}",
         "d.s.error":      "✗ Ошибка (переключи на «Эксперт» для подробностей)",
         "d.s.done":       "Готово",
-        # Bitrate — fixed at 192 (the optimal choice)
-        "d.bitrate":      "Качество звука:",
-        "d.bitrate.value": "192 kbps · рекомендуется",
-        "d.bitrate.why":  "Почему именно 192? Звук на YouTube — это примерно 128–160 кбит/с. "
-                          "192 kbps MP3 полностью сохраняет это качество без слышимых потерь. "
-                          "Брать 320 нет смысла — нельзя добавить качество, которого нет в источнике: "
-                          "файл лишь станет тяжелее и чаще будет упираться в лимит Telegram 50 МБ. "
-                          "128 — уже немного хуже на слух. Поэтому 192 — золотая середина: "
-                          "полное качество источника при разумном размере файла.",
         # Schedule
         "d.sched.title":   "РАСПИСАНИЕ ПРОВЕРОК",
         "d.sched.every":   "Как часто проверять плейлист:",
@@ -402,13 +404,6 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Posted: {0}",
         "d.s.error":      "✗ Error (switch to “Expert” for details)",
         "d.s.done":       "Done",
-        "d.bitrate":      "Audio quality:",
-        "d.bitrate.value": "192 kbps · recommended",
-        "d.bitrate.why":  "Why 192? YouTube audio is roughly 128–160 kbps. A 192 kbps MP3 fully "
-                          "preserves that with no audible loss. Going to 320 is pointless — you can't "
-                          "add quality the source never had; the file just gets bigger and hits "
-                          "Telegram's 50 MB limit more often. 128 is already slightly worse to the ear. "
-                          "So 192 is the sweet spot: the source's full quality at a sensible file size.",
         "d.sched.title":   "CHECK SCHEDULE",
         "d.sched.every":   "How often to check the playlist:",
         "d.sched.1h":      "Every hour",
@@ -530,13 +525,6 @@ LANGS: dict[str, dict[str, str]] = {
         "d.s.posted":     "✓ Publicēts: {0}",
         "d.s.error":      "✗ Kļūda (pārslēdz uz “Eksperts”, lai redzētu detaļas)",
         "d.s.done":       "Pabeigts",
-        "d.bitrate":      "Skaņas kvalitāte:",
-        "d.bitrate.value": "192 kbps · ieteicams",
-        "d.bitrate.why":  "Kāpēc 192? YouTube skaņa ir aptuveni 128–160 kbps. 192 kbps MP3 to pilnībā "
-                          "saglabā bez dzirdamiem zudumiem. 320 nav jēgas — nevar pievienot kvalitāti, "
-                          "kuras avotā nav: fails kļūst tikai lielāks un biežāk pārsniedz Telegram 50 MB "
-                          "limitu. 128 jau ir nedaudz sliktāk. Tāpēc 192 ir optimālā izvēle: "
-                          "avota pilnā kvalitāte ar saprātīgu faila izmēru.",
         "d.sched.title":   "PĀRBAUDES GRAFIKS",
         "d.sched.every":   "Cik bieži pārbaudīt sarakstu:",
         "d.sched.1h":      "Katru stundu",
@@ -1685,28 +1673,7 @@ class DashboardPage(QWidget):
         lay.addWidget(sched_card)
         self._restyle_sched()
 
-        # ── audio quality — fixed at the optimal 192 kbps ─────────────
-        br_card = GlassCard()
-        br_lay = QHBoxLayout(br_card)
-        br_lay.setContentsMargins(16, 10, 16, 10)
-        br_lay.setSpacing(12)
-
-        self._br_label = QLabel()
-        self._br_label.setStyleSheet(f"color: {WHITE}; font-size: 12px; font-weight: 600;")
-        br_lay.addWidget(self._br_label)
-
-        self._br_badge = QLabel()
-        self._br_badge.setStyleSheet(
-            f"color: #020202; background: {CYAN};"
-            f" border-radius: 8px; padding: 4px 12px;"
-            f" font-size: 12px; font-weight: 800; letter-spacing: .5px;")
-        br_lay.addWidget(self._br_badge)
-
-        self._br_why = QLabel()
-        self._br_why.setWordWrap(True)
-        self._br_why.setStyleSheet(f"color: {TEXT}; font-size: 11px; line-height: 1.4;")
-        br_lay.addWidget(self._br_why, 1)
-        lay.addWidget(br_card)
+        # (Audio quality is fixed at 192 kbps — no UI; the bot defaults to it.)
 
         # ── progress bar (visible only during a run) ──────────────────
         self._progress = QProgressBar()
@@ -1841,9 +1808,6 @@ class DashboardPage(QWidget):
         self._lbl_session.setText(tr("d.stat.runs"))
         self._log_title.setText(tr("d.log.title"))
         self._btn_clear.setText(tr("d.log.clear"))
-        self._br_label.setText(tr("d.bitrate"))
-        self._br_badge.setText(tr("d.bitrate.value"))
-        self._br_why.setText(tr("d.bitrate.why"))
         # Schedule card
         self._sched_title.setText(tr("d.sched.title"))
         self._sched_every.setText(tr("d.sched.every"))
@@ -2032,6 +1996,13 @@ class DashboardPage(QWidget):
         self._render(txt, store=True)
 
     def _render(self, txt: str, store: bool) -> None:
+        # Strip U+FFFD replacement glyphs (the green ◆ that appeared when a
+        # log line failed to decode) and any leftover control chars, so the
+        # log never shows garbage. A line that was ONLY garbage is dropped.
+        txt = txt.replace("�", "").replace("\x00", "")
+        if not txt.strip():
+            return
+
         if store:
             self._raw_lines.append(txt)
             if len(self._raw_lines) > 2000:
