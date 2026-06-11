@@ -226,6 +226,7 @@ LANGS: dict[str, dict[str, str]] = {
 
         # Wizard buttons
         "w.btn.back":     "← Назад",
+        "w.btn.menu":     "← В меню (на главную)",
         "w.btn.next":     "Дальше →",
         "w.btn.save":     "Сохранить и запустить →",
 
@@ -366,6 +367,7 @@ LANGS: dict[str, dict[str, str]] = {
         "w.review.channel":  "Channel",
         "w.review.playlist": "Playlist",
         "w.btn.back":     "← Back",
+        "w.btn.menu":     "← Back to menu (dashboard)",
         "w.btn.next":     "Continue →",
         "w.btn.save":     "Save & Launch →",
         "w.err.token":    "That token doesn't look right — it should contain ':' and be longer than 20 characters. Copy it again from BotFather.",
@@ -493,6 +495,7 @@ LANGS: dict[str, dict[str, str]] = {
         "w.review.channel":  "Kanāls",
         "w.review.playlist": "Saraksts",
         "w.btn.back":     "← Atpakaļ",
+        "w.btn.menu":     "← Uz izvēlni (sākums)",
         "w.btn.next":     "Tālāk →",
         "w.btn.save":     "Saglabāt un palaist →",
         "w.err.token":    "Token nelikās pareizs — tajā jābūt ':' un tas garāks par 20 simboliem. Kopē vēlreiz no BotFather.",
@@ -1157,7 +1160,8 @@ class TestWorker(QThread):
 #  Wizard  (3-step setup)
 # ══════════════════════════════════════════════════════════════════════
 class WizardPage(QWidget):
-    finished = pyqtSignal()  # emitted when .env saved
+    finished  = pyqtSignal()  # emitted when .env saved
+    cancelled = pyqtSignal()  # emitted when user backs out to the dashboard
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1188,6 +1192,20 @@ class WizardPage(QWidget):
         inner = QVBoxLayout(card)
         inner.setContentsMargins(40, 32, 40, 32)
         inner.setSpacing(16)
+
+        # ── "back to dashboard" link (only when a config already exists) ─
+        top_row = QHBoxLayout()
+        self._cancel_btn = QPushButton("")
+        self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._cancel_btn.setStyleSheet(
+            f"QPushButton {{ color: {CYAN}; background: rgba(0,212,255,8);"
+            f" border: 1px solid rgba(0,212,255,30); border-radius: 8px;"
+            f" padding: 5px 14px; font-size: 12px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: rgba(0,212,255,18); }}")
+        self._cancel_btn.clicked.connect(self.cancelled.emit)
+        top_row.addWidget(self._cancel_btn)
+        top_row.addStretch()
+        inner.addLayout(top_row)
 
         # ── numbered step pills ───────────────────────────────────────
         pill_row = QHBoxLayout()
@@ -1344,6 +1362,13 @@ class WizardPage(QWidget):
         self._back_btn.setText(tr("w.btn.back"))
         self._next_btn.setText(tr("w.btn.save") if self._step == 2 else tr("w.btn.next"))
         self._status.setText("")
+        # "Back to dashboard" is only meaningful once a config already
+        # exists (i.e. the user reached the wizard from ⚙ CONFIG, not on
+        # first-run setup where there's nothing to go back to).
+        self._cancel_btn.setText(tr("w.btn.menu"))
+        has_config = ENV_PATH.exists() and "TELEGRAM_BOT_TOKEN=" in ENV_PATH.read_text(
+            encoding="utf-8", errors="ignore")
+        self._cancel_btn.setVisible(has_config)
 
         if self._step == 2 and self._channels:
             token_preview = self._token[:12] + "…" if len(self._token) > 12 else self._token
@@ -1358,6 +1383,11 @@ class WizardPage(QWidget):
 
     # Old name kept for the internal navigation callers
     def _refresh(self) -> None:
+        self.retranslate()
+
+    def go_to_start(self) -> None:
+        """Jump back to step 1 (used when reopening the wizard from CONFIG)."""
+        self._step = 0
         self.retranslate()
 
     def _back(self) -> None:
@@ -2209,6 +2239,7 @@ class MainWindow(QMainWindow):
         self._dashboard = DashboardPage()
 
         self._wizard.finished.connect(self._to_dashboard)
+        self._wizard.cancelled.connect(self._to_dashboard)
         self._dashboard.go_config.connect(self._to_wizard)
 
         self._stack.addWidget(self._wizard)     # index 0
@@ -2224,8 +2255,14 @@ class MainWindow(QMainWindow):
 
     def _to_dashboard(self) -> None:
         self._stack.setCurrentIndex(1)
+        # The dashboard reflects .env (config status, schedule, etc.) —
+        # refresh it in case the wizard just changed things.
+        self._dashboard.retranslate()
 
     def _to_wizard(self) -> None:
+        # Always start the wizard at step 1 (the instructions), not wherever
+        # it was left, so reopening ⚙ CONFIG is predictable.
+        self._wizard.go_to_start()
         self._stack.setCurrentIndex(0)
 
     # ── resize ────────────────────────────────────────────────────────
