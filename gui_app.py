@@ -28,7 +28,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGraphicsDropShadowEffect,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
-    QPushButton, QScrollBar, QSizePolicy, QStackedWidget,
+    QProgressBar, QPushButton, QScrollBar, QSizePolicy, QStackedWidget,
     QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget,
 )
 from PyQt6.QtGui import QAction
@@ -83,6 +83,7 @@ _BOT_MODES = {
     "--bot-watch": "watch",
     "--bot-once":  "once",
     "--bot-check": "check",
+    "--bot-test":  "test",
 }
 
 
@@ -98,7 +99,12 @@ def _run_bot_mode(mode: str) -> int:
     except Exception as exc:                       # noqa: BLE001
         print(f"[ERROR] Cannot import bot module: {exc}", flush=True)
         return 1
-    fn = {"watch": bot._do_watch, "once": bot._do_run, "check": bot._do_check}.get(mode)
+    fn = {
+        "watch": bot._do_watch,
+        "once":  bot._do_run,
+        "check": bot._do_check,
+        "test":  bot._do_test,
+    }.get(mode)
     if not fn:
         print(f"[ERROR] Unknown bot mode: {mode}", flush=True)
         return 1
@@ -205,6 +211,11 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.add":               "+ Добавить пару (канал + плейлист)",
         "w.step2.remove":            "×",
         "w.step2.pair":              "Пара #{0}",
+        "w.test.btn":                "Тест канала",
+        "w.test.checking":           "Отправляю тест в {0}…",
+        "w.test.ok":                 "✓ Бот может писать в «{0}»",
+        "w.test.fail":               "✗ Не вышло: {0}. Проверь, что бот добавлен админом с правом «Размещать сообщения».",
+        "w.test.need":               "Сначала введи токен (шаг 1) и канал.",
 
         # Wizard step 3 — review
         "w.step3.title":  "Шаг 3 — проверь и запусти",
@@ -243,6 +254,17 @@ LANGS: dict[str, dict[str, str]] = {
         "d.add.note":     "Пара добавится в настройки. Если бот сейчас работает — нажми СТОП и СЛЕДИТЬ заново.",
         "d.add.btn":      "Добавить",
         "d.add.ok":       "✓ Пара добавлена. Сейчас в работе: {0}.",
+        # Progress + simple-mode log
+        "d.progress":     "Трек {0} из {1}",
+        "d.mode.simple":  "Простой",
+        "d.mode.expert":  "Эксперт",
+        "d.s.connected":  "✓ Бот подключён",
+        "d.s.checking":   "Проверяю плейлист…",
+        "d.s.new":        "⚡ Новых треков: {0}",
+        "d.s.nonew":      "Новых треков нет — всё уже отправлено",
+        "d.s.posted":     "✓ Отправлено: {0}",
+        "d.s.error":      "✗ Ошибка (переключи на «Эксперт» для подробностей)",
+        "d.s.done":       "Готово",
         "d.log.title":    "ЖУРНАЛ",
         "d.log.clear":    "очистить",
         "d.ready":        "Space Music Hub GUI готов.",
@@ -312,6 +334,11 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.add":               "+ Add pair (channel + playlist)",
         "w.step2.remove":            "×",
         "w.step2.pair":              "Pair #{0}",
+        "w.test.btn":                "Test channel",
+        "w.test.checking":           "Sending a test to {0}…",
+        "w.test.ok":                 "✓ Bot can post to “{0}”",
+        "w.test.fail":               "✗ Failed: {0}. Make sure the bot is a channel admin with “Post Messages”.",
+        "w.test.need":               "Enter the token (step 1) and a channel first.",
         "w.step3.title":  "Step 3 — review & launch",
         "w.step3.sub":    "Looks good? Click Save & Launch. You can change settings later via ⚙ CONFIG.",
         "w.review.token":    "Bot token",
@@ -342,6 +369,16 @@ LANGS: dict[str, dict[str, str]] = {
         "d.add.note":     "Pair gets appended to your config. If the bot is running, hit STOP and WATCH again.",
         "d.add.btn":      "Add",
         "d.add.ok":       "✓ Pair added. Now in config: {0}.",
+        "d.progress":     "Track {0} of {1}",
+        "d.mode.simple":  "Simple",
+        "d.mode.expert":  "Expert",
+        "d.s.connected":  "✓ Bot connected",
+        "d.s.checking":   "Checking playlist…",
+        "d.s.new":        "⚡ New tracks: {0}",
+        "d.s.nonew":      "No new tracks — all already posted",
+        "d.s.posted":     "✓ Posted: {0}",
+        "d.s.error":      "✗ Error (switch to “Expert” for details)",
+        "d.s.done":       "Done",
         "d.log.title":    "LOG OUTPUT",
         "d.log.clear":    "clear",
         "d.ready":        "Space Music Hub GUI ready.",
@@ -406,6 +443,11 @@ LANGS: dict[str, dict[str, str]] = {
         "w.step2.add":               "+ Pievienot pāri (kanāls + saraksts)",
         "w.step2.remove":            "×",
         "w.step2.pair":              "Pāris #{0}",
+        "w.test.btn":                "Testēt kanālu",
+        "w.test.checking":           "Sūtu testu uz {0}…",
+        "w.test.ok":                 "✓ Bots var rakstīt uz “{0}”",
+        "w.test.fail":               "✗ Neizdevās: {0}. Pārliecinies, ka bots ir kanāla administrators ar “Publicēt ziņas”.",
+        "w.test.need":               "Vispirms ievadi tokenu (1. solis) un kanālu.",
         "w.step3.title":  "3. solis — pārbaudi un palaid",
         "w.step3.sub":    "Viss kārtībā? Spied «Saglabāt un palaist». Vēlāk var mainīt caur ⚙ IESTATĪJUMI.",
         "w.review.token":    "Bota token",
@@ -436,6 +478,16 @@ LANGS: dict[str, dict[str, str]] = {
         "d.add.note":     "Pāris tiks pievienots iestatījumiem. Ja bots strādā — STOP un SEKOT vēlreiz.",
         "d.add.btn":      "Pievienot",
         "d.add.ok":       "✓ Pāris pievienots. Tagad iestatījumos: {0}.",
+        "d.progress":     "Dziesma {0} no {1}",
+        "d.mode.simple":  "Vienkāršs",
+        "d.mode.expert":  "Eksperts",
+        "d.s.connected":  "✓ Bots savienots",
+        "d.s.checking":   "Pārbaudu sarakstu…",
+        "d.s.new":        "⚡ Jaunas dziesmas: {0}",
+        "d.s.nonew":      "Nav jaunu dziesmu — viss jau publicēts",
+        "d.s.posted":     "✓ Publicēts: {0}",
+        "d.s.error":      "✗ Kļūda (pārslēdz uz “Eksperts”, lai redzētu detaļas)",
+        "d.s.done":       "Pabeigts",
         "d.log.title":    "ŽURNĀLS",
         "d.log.clear":    "tīrīt",
         "d.ready":        "Space Music Hub GUI gatavs.",
@@ -923,6 +975,58 @@ class BotWorker(QThread):
 
 
 # ══════════════════════════════════════════════════════════════════════
+#  Channel test worker — sends + deletes a test message via --bot-test
+# ══════════════════════════════════════════════════════════════════════
+class TestWorker(QThread):
+    result = pyqtSignal(bool, str)  # (ok, channel-title-or-error)
+
+    def __init__(self, token: str, channel: str,
+                 parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._token   = token
+        self._channel = channel
+
+    def run(self) -> None:
+        if getattr(sys, "frozen", False):
+            cmd = [sys.executable, "--bot-test"]
+        else:
+            cmd = [sys.executable, str(Path(__file__).resolve()), "--bot-test"]
+
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"]  = "utf-8:replace"
+        env["PYTHONUTF8"]        = "1"
+        env["SMH_TEST_TOKEN"]    = self._token
+        env["SMH_TEST_CHANNEL"]  = self._channel
+
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", cwd=str(BASE_DIR), env=env,
+                creationflags=creationflags, timeout=40,
+            )
+            # The dispatcher prints exactly one TEST_OK|... / TEST_FAIL|... line
+            line = ""
+            for ln in (proc.stdout or "").splitlines():
+                if ln.startswith(("TEST_OK|", "TEST_FAIL|")):
+                    line = ln
+                    break
+            if line.startswith("TEST_OK|"):
+                self.result.emit(True, line.split("|", 1)[1])
+            elif line.startswith("TEST_FAIL|"):
+                self.result.emit(False, line.split("|", 1)[1])
+            else:
+                self.result.emit(False, (proc.stderr or proc.stdout or "no response").strip()[:200])
+        except subprocess.TimeoutExpired:
+            self.result.emit(False, "timeout")
+        except Exception as exc:                   # noqa: BLE001
+            self.result.emit(False, str(exc))
+
+
+# ══════════════════════════════════════════════════════════════════════
 #  Wizard  (3-step setup)
 # ══════════════════════════════════════════════════════════════════════
 class WizardPage(QWidget):
@@ -1166,9 +1270,24 @@ class WizardPage(QWidget):
         plist = QLineEdit(playlist); plist.setMinimumHeight(42)
         lay.addWidget(chan); lay.addWidget(plist)
 
+        # Test-channel row: a button + a status label
+        test_row = QHBoxLayout(); test_row.setSpacing(8)
+        test_btn = NeonButton("", style="glass")
+        test_btn.setMinimumHeight(34)
+        test_btn.setMaximumWidth(150)
+        test_status = QLabel("")
+        test_status.setWordWrap(True)
+        test_status.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        test_row.addWidget(test_btn)
+        test_row.addWidget(test_status, 1)
+        lay.addLayout(test_row)
+
         row = {"frame": frame, "idx_lbl": idx_lbl,
-               "chan": chan, "plist": plist, "remove": remove_btn}
+               "chan": chan, "plist": plist, "remove": remove_btn,
+               "test_btn": test_btn, "test_status": test_status,
+               "test_worker": None}
         remove_btn.clicked.connect(lambda: self._remove_pair(row))
+        test_btn.clicked.connect(lambda: self._test_channel(row))
         self._pair_rows.append(row)
         self._pairs_layout.addWidget(frame)
         self._renumber_pairs()
@@ -1186,6 +1305,36 @@ class WizardPage(QWidget):
             row["chan"].setPlaceholderText(tr("w.step2.chan.placeholder"))
             row["plist"].setPlaceholderText(tr("w.step2.plist.placeholder"))
             row["remove"].setVisible(len(self._pair_rows) > 1)
+            row["test_btn"].setText(tr("w.test.btn"))
+
+    def _test_channel(self, row: dict) -> None:
+        if row.get("test_worker") and row["test_worker"].isRunning():
+            return
+        token   = self._token or self._token_in.text().strip()
+        channel = normalise_handle(row["chan"].text())
+        if ":" not in token or not channel.startswith("@"):
+            row["test_status"].setStyleSheet(f"color: {AMBER}; font-size: 11px;")
+            row["test_status"].setText(tr("w.test.need"))
+            return
+
+        row["test_status"].setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        row["test_status"].setText(tr("w.test.checking", channel))
+        row["test_btn"].setEnabled(False)
+
+        worker = TestWorker(token, channel)
+
+        def _on_result(ok: bool, info: str) -> None:
+            row["test_btn"].setEnabled(True)
+            if ok:
+                row["test_status"].setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
+                row["test_status"].setText(tr("w.test.ok", info))
+            else:
+                row["test_status"].setStyleSheet(f"color: {ERROR}; font-size: 11px;")
+                row["test_status"].setText(tr("w.test.fail", info[:120]))
+
+        worker.result.connect(_on_result)
+        row["test_worker"] = worker
+        worker.start()
 
     def _next(self) -> None:
         if self._step == 0:
@@ -1303,6 +1452,24 @@ class DashboardPage(QWidget):
             btn_row.addWidget(b)
         lay.addLayout(btn_row)
 
+        # ── progress bar (visible only during a run) ──────────────────
+        self._progress = QProgressBar()
+        self._progress.setMinimumHeight(22)
+        self._progress.setTextVisible(True)
+        self._progress.setFormat("")
+        self._progress.setStyleSheet(
+            "QProgressBar {"
+            f" background: rgba(0,0,0,140); border: 1px solid rgba(0,212,255,28);"
+            f" border-radius: 8px; color: {WHITE}; font-size: 11px;"
+            " font-weight: 600; text-align: center; }"
+            "QProgressBar::chunk {"
+            " background: qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+            f"  stop:0 {MAGENTA}, stop:0.5 {PURPLE}, stop:1 {CYAN});"
+            " border-radius: 7px; }")
+        self._progress.setVisible(False)
+        self._progress_total = 0
+        lay.addWidget(self._progress)
+
         # ── stats cards ───────────────────────────────────────────────
         stats_row = QHBoxLayout(); stats_row.setSpacing(10)
         self._n_posted,  self._lbl_posted  = self._stat_card(stats_row, CYAN)
@@ -1349,14 +1516,24 @@ class DashboardPage(QWidget):
         self._log_title = QLabel()
         self._log_title.setStyleSheet(f"color: {WHITE}; font-size: 13px;"
                                 " letter-spacing: 3px; font-weight: 700;")
+        # Simple / Expert toggle
+        self._simple_mode = True
+        self._raw_lines: list[str] = []   # full history for re-render on toggle
+        self._mode_btn = QPushButton()
+        self._mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._mode_btn.setCheckable(True)
+        self._mode_btn.setFixedHeight(24)
+        self._mode_btn.clicked.connect(self._toggle_mode)
         self._btn_clear = QPushButton()
         self._btn_clear.setStyleSheet(
             f"color: {MUTED}; font-size: 11px; background: transparent;"
             " border: none; padding: 0; cursor: pointer;")
         self._btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_clear.clicked.connect(lambda: self._log.clear())
+        self._btn_clear.clicked.connect(self._clear_log)
         log_hdr.addWidget(self._log_title)
         log_hdr.addStretch()
+        log_hdr.addWidget(self._mode_btn)
+        log_hdr.addSpacing(14)
         log_hdr.addWidget(self._btn_clear)
         lay.addLayout(log_hdr)
 
@@ -1367,6 +1544,7 @@ class DashboardPage(QWidget):
         # 2000 lines instead of letting the document grow unbounded.
         self._log.document().setMaximumBlockCount(2000)
         lay.addWidget(self._log)
+        self._restyle_mode_btn()
 
         # ── wiring ────────────────────────────────────────────────────
         self._btn_watch.clicked.connect(lambda: self._start("watch"))
@@ -1375,9 +1553,9 @@ class DashboardPage(QWidget):
         self._btn_stop.clicked.connect(self._stop)
         self._btn_conf.clicked.connect(self.go_config)
 
-        self._log_line(tr("d.ready"))
+        self._log_line(tr("d.ready"), system=True)
         if not ENV_PATH.exists():
-            self._log_line(tr("d.no_env"))
+            self._log_line(tr("d.no_env"), system=True)
 
     def retranslate(self) -> None:
         env_ok = ENV_PATH.exists()
@@ -1402,6 +1580,7 @@ class DashboardPage(QWidget):
         self._lbl_session.setText(tr("d.stat.runs"))
         self._log_title.setText(tr("d.log.title"))
         self._btn_clear.setText(tr("d.log.clear"))
+        self._restyle_mode_btn()
         # Inline add-pair card
         self._add_title.setText(tr("d.add.title"))
         self._add_note.setText(tr("d.add.note"))
@@ -1446,62 +1625,155 @@ class DashboardPage(QWidget):
         self._failed = 0
         self._n_posted.setText("0")
         self._n_failed.setText("0")
+        self._progress_total = 0
+        self._progress.setValue(0)
+        self._progress.setFormat("")
+        self._progress.setVisible(False)
         self._status_badge.set_running()
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(False)
         self._stop_box.setVisible(True)
-        self._log_line(tr("d.starting", mode.upper()))
+        self._log_line(tr("d.starting", mode.upper()), system=True)
 
     def _stop(self) -> None:
         if self._worker:
             self._worker.stop()
-        self._log_line(tr("d.stopped"))
+        self._log_line(tr("d.stopped"), system=True)
         self._on_done(True)
 
     def _on_done(self, ok: bool) -> None:
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(True)
         self._stop_box.setVisible(False)
+        self._progress.setVisible(False)
         if ok:
             self._status_badge.set_done()
         else:
             self._status_badge.set_error()
 
-    # ── log ───────────────────────────────────────────────────────────
-    _POSTED_RX = _re.compile(r"\]\s*\[\d+/\d+\]\s*Posted:\s")
-    _FAILED_RX = _re.compile(r"]\s*Failed to process\s")
+    # ── log mode ──────────────────────────────────────────────────────
+    def _restyle_mode_btn(self) -> None:
+        label = tr("d.mode.simple") if self._simple_mode else tr("d.mode.expert")
+        self._mode_btn.setText(f"◧ {label}")
+        on = self._simple_mode
+        self._mode_btn.setStyleSheet(
+            f"QPushButton {{ color: {'#020202' if on else WHITE};"
+            f"  background: {CYAN if on else 'rgba(255,255,255,6)'};"
+            f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
+            f"  border-radius: 8px; padding: 2px 12px; font-size: 11px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
 
-    def _log_line(self, text: str) -> None:
-        ts  = datetime.datetime.now().strftime("%H:%M:%S")
+    def _toggle_mode(self) -> None:
+        self._simple_mode = not self._simple_mode
+        self._restyle_mode_btn()
+        # Re-render the whole buffer under the new mode
+        self._log.clear()
+        for raw in self._raw_lines:
+            self._render(raw, store=False)
+        sb: QScrollBar = self._log.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _clear_log(self) -> None:
+        self._raw_lines.clear()
+        self._log.clear()
+
+    # ── log line processing ───────────────────────────────────────────
+    _POSTED_RX   = _re.compile(r"\]\s*\[(\d+)/(\d+)\]\s*Posted:\s*(.*)$")
+    _DL_RX       = _re.compile(r"\]\s*\[(\d+)/(\d+)\]\s*Downloading:")
+    _FAILED_RX   = _re.compile(r"]\s*Failed to process\s")
+    _NEW_RX      = _re.compile(r"]\s*(\d+)\s+new video")
+    _NONEW_RX    = _re.compile(r"No new videos")
+    _SKIP_RX     = _re.compile(r"Too large for Telegram")
+
+    def _log_line(self, text: str, system: bool = False) -> None:
         txt = text.strip()
 
-        # Update live counters by parsing the bot's own log lines —
-        # bot logs each successful post as `[chan] [i/N] Posted: title`
-        # and each failure as `[chan] Failed to process video_id ...`.
-        if self._POSTED_RX.search(txt):
+        # GUI-origin status messages (ready / starting / stopped) are already
+        # user-friendly — always show them verbatim, even in Simple mode.
+        if system:
+            self._raw_lines.append(txt)
+            self._log.append(f'<span style="color:{CYAN}">{txt}</span>')
+            sb: QScrollBar = self._log.verticalScrollBar()
+            sb.setValue(sb.maximum())
+            return
+
+        # ── live counters ──
+        m_posted = self._POSTED_RX.search(txt)
+        if m_posted:
             self._posted += 1
             self._n_posted.setText(str(self._posted))
-        elif self._FAILED_RX.search(txt):
+        elif self._FAILED_RX.search(txt) or self._SKIP_RX.search(txt):
             self._failed += 1
             self._n_failed.setText(str(self._failed))
 
-        # colour keywords
-        if any(k in txt.lower() for k in ("error", "fail", "exception")):
-            colour = ERROR
-        elif any(k in txt.lower() for k in ("ok", "✓", "posted", "success", "done")):
-            colour = SUCCESS
-        elif any(k in txt.lower() for k in ("warn", "skip")):
-            colour = AMBER
-        else:
-            colour = "#6a7590"
+        # ── progress bar from [i/N] ──
+        m_prog = self._DL_RX.search(txt) or self._POSTED_RX.search(txt)
+        if m_prog:
+            i, n = int(m_prog.group(1)), int(m_prog.group(2))
+            if n > 0:
+                self._progress_total = n
+                self._progress.setMaximum(n)
+                self._progress.setValue(i)
+                self._progress.setFormat(tr("d.progress", i, n))
+                self._progress.setVisible(True)
 
-        html = (
-            f'<span style="color:{MUTED}">[{ts}]</span> '
-            f'<span style="color:{colour}">{txt}</span>'
-        )
-        self._log.append(html)
+        self._render(txt, store=True)
+
+    def _render(self, txt: str, store: bool) -> None:
+        if store:
+            self._raw_lines.append(txt)
+            if len(self._raw_lines) > 2000:
+                del self._raw_lines[:len(self._raw_lines) - 2000]
+
+        if self._simple_mode:
+            friendly = self._simplify(txt)
+            if friendly is None:
+                return  # hidden in simple mode
+            colour, body = friendly
+            self._log.append(f'<span style="color:{colour}">{body}</span>')
+        else:
+            ts = datetime.datetime.now().strftime("%H:%M:%S")
+            low = txt.lower()
+            if any(k in low for k in ("error", "fail", "exception", "traceback")):
+                colour = ERROR
+            elif any(k in low for k in ("✓", "posted", "success", "done", " ok ")):
+                colour = SUCCESS
+            elif any(k in low for k in ("warn", "skip", "too large")):
+                colour = AMBER
+            else:
+                colour = "#6a7590"
+            esc = txt.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            self._log.append(
+                f'<span style="color:{MUTED}">[{ts}]</span> '
+                f'<span style="color:{colour}">{esc}</span>')
+
         sb: QScrollBar = self._log.verticalScrollBar()
         sb.setValue(sb.maximum())
+
+    def _simplify(self, txt: str):
+        """Map a raw log line to (colour, friendly_text) — or None to hide.
+
+        Used in 'Simple' mode so a non-technical user sees only the
+        meaningful events, not yt-dlp internals or Python tracebacks.
+        """
+        m = self._POSTED_RX.search(txt)
+        if m:
+            return SUCCESS, tr("d.s.posted", m.group(3).strip())
+        m = self._NEW_RX.search(txt)
+        if m:
+            return CYAN, tr("d.s.new", m.group(1))
+        if self._NONEW_RX.search(txt):
+            return TEXT, tr("d.s.nonew")
+        if self._SKIP_RX.search(txt):
+            return AMBER, "⚠ " + txt.split("] ", 1)[-1]
+        if "Bot token OK" in txt or "connected as @" in txt:
+            return SUCCESS, tr("d.s.connected")
+        if "Fetching playlist" in txt or "Playlist fetched" in txt:
+            return TEXT, tr("d.s.checking")
+        if self._FAILED_RX.search(txt):
+            return ERROR, tr("d.s.error")
+        # Hide everything else (tracebacks, yt-dlp noise, [exec], etc.)
+        return None
 
     # ── inline add-pair ──────────────────────────────────────────────
     def _add_inline_pair(self) -> None:
@@ -1536,7 +1808,7 @@ class DashboardPage(QWidget):
         self._add_plist.clear()
         self._add_status.setStyleSheet(f"color: {SUCCESS}; font-size: 12px;")
         self._add_status.setText(tr("d.add.ok", next_idx))
-        self._log_line(f"[+] Added pair #{next_idx}: {chan} ← {plist}")
+        self._log_line(f"[+] Added pair #{next_idx}: {chan} ← {plist}", system=True)
 
 
 # ══════════════════════════════════════════════════════════════════════

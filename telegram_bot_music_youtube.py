@@ -814,6 +814,52 @@ async def _verify_channel(token: str, channel: str) -> str | None:
         return None
 
 
+async def _test_post(token: str, channel: str) -> tuple[bool, str]:
+    """Actually post (and delete) a test message in *channel*.
+
+    Unlike ``get_chat`` — which only checks reachability — this proves the
+    bot is an admin with *post* rights, the real failure mode users hit.
+
+    Returns ``(ok, human_message)``.
+    """
+    try:
+        bot = Bot(token=token)
+        msg = await bot.send_message(
+            chat_id=channel,
+            text="✅ Space Music Hub — тест связи. Бот может писать сюда. "
+                 "Это сообщение сейчас удалится.",
+        )
+        # Clean up so the channel isn't littered with test posts.
+        try:
+            await bot.delete_message(chat_id=channel, message_id=msg.message_id)
+        except Exception:  # noqa: BLE001 — delete is best-effort
+            pass
+        chat = await bot.get_chat(channel)
+        return True, (chat.title or channel)
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
+def _do_test() -> int:
+    """`--bot-test` entry: read token+channel from env, post a test message.
+
+    Used by the GUI wizard's "Test channel" button. Reads SMH_TEST_TOKEN
+    and SMH_TEST_CHANNEL from the environment so the secret never appears
+    on the command line / process list.
+    """
+    token   = os.getenv("SMH_TEST_TOKEN", "").strip()
+    channel = os.getenv("SMH_TEST_CHANNEL", "").strip()
+    if not token or not channel:
+        print("TEST_FAIL|missing token or channel", flush=True)
+        return 1
+    ok, info = asyncio.run(_test_post(token, channel))
+    if ok:
+        print(f"TEST_OK|{info}", flush=True)
+        return 0
+    print(f"TEST_FAIL|{info}", flush=True)
+    return 1
+
+
 def _write_env_file(
     token: str,
     channels: list[tuple[str, str, str]],
