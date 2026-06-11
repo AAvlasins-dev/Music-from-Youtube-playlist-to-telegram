@@ -233,9 +233,18 @@ LANGS: dict[str, dict[str, str]] = {
         "d.btn.check":    "🔍  ПРОВЕРИТЬ",
         "d.btn.stop":     "■  СТОП",
         "d.btn.config":   "⚙  НАСТРОЙКИ",
+        "d.hint.watch":   "каждые 15 мин сам ищет новые треки и постит",
+        "d.hint.once":    "один прогон: скачать всё новое и остановиться",
+        "d.hint.check":   "только проверить настройки, ничего не качать",
+        "d.hint.stop":    "остановить текущий процесс",
+        "d.hint.config":  "поменять токен, каналы или плейлисты",
         "d.stat.posted":  "ТРЕКОВ ОТПРАВЛЕНО",
         "d.stat.failed":  "ОШИБОК",
         "d.stat.runs":    "ЗАПУСКОВ ЗА СЕССИЮ",
+        "d.add.title":    "+ Добавить пару (канал + плейлист)",
+        "d.add.note":     "Пара добавится в настройки. Если бот сейчас работает — нажми СТОП и СЛЕДИТЬ заново.",
+        "d.add.btn":      "Добавить",
+        "d.add.ok":       "✓ Пара добавлена. Сейчас в работе: {0}.",
         "d.log.title":    "ЖУРНАЛ",
         "d.log.clear":    "очистить",
         "d.ready":        "Space Music Hub GUI готов.",
@@ -323,9 +332,18 @@ LANGS: dict[str, dict[str, str]] = {
         "d.btn.check":    "🔍  CHECK",
         "d.btn.stop":     "■  STOP",
         "d.btn.config":   "⚙  CONFIG",
+        "d.hint.watch":   "checks playlist every 15 min and auto-posts",
+        "d.hint.once":    "one pass: post everything new, then stop",
+        "d.hint.check":   "just verify config, don't download anything",
+        "d.hint.stop":    "stop the current run",
+        "d.hint.config":  "change token, channels or playlists",
         "d.stat.posted":  "TRACKS POSTED",
         "d.stat.failed":  "FAILED",
         "d.stat.runs":    "SESSION RUNS",
+        "d.add.title":    "+ Add another channel + playlist pair",
+        "d.add.note":     "Pair gets appended to your config. If the bot is running, hit STOP and WATCH again.",
+        "d.add.btn":      "Add",
+        "d.add.ok":       "✓ Pair added. Now in config: {0}.",
         "d.log.title":    "LOG OUTPUT",
         "d.log.clear":    "clear",
         "d.ready":        "Space Music Hub GUI ready.",
@@ -408,9 +426,18 @@ LANGS: dict[str, dict[str, str]] = {
         "d.btn.check":    "🔍  PĀRBAUDĪT",
         "d.btn.stop":     "■  STOP",
         "d.btn.config":   "⚙  IESTATĪJUMI",
+        "d.hint.watch":   "ik pa 15 min pārbauda sarakstu un publicē jaunos",
+        "d.hint.once":    "vienreiz: publicē visu jauno un apstājas",
+        "d.hint.check":   "tikai pārbauda iestatījumus, neko nelejupielādē",
+        "d.hint.stop":    "apturēt pašreizējo darbu",
+        "d.hint.config":  "mainīt tokenu, kanālus vai sarakstus",
         "d.stat.posted":  "PUBLICĒTI",
         "d.stat.failed":  "KĻŪDAS",
         "d.stat.runs":    "PALAIŠANAS",
+        "d.add.title":    "+ Pievienot kanāla + saraksta pāri",
+        "d.add.note":     "Pāris tiks pievienots iestatījumiem. Ja bots strādā — STOP un SEKOT vēlreiz.",
+        "d.add.btn":      "Pievienot",
+        "d.add.ok":       "✓ Pāris pievienots. Tagad iestatījumos: {0}.",
         "d.log.title":    "ŽURNĀLS",
         "d.log.clear":    "tīrīt",
         "d.ready":        "Space Music Hub GUI gatavs.",
@@ -1277,17 +1304,34 @@ class DashboardPage(QWidget):
         self._eq = EqualizerWidget(bars=34)
         lay.addWidget(self._eq)
 
-        # ── action buttons ────────────────────────────────────────────
+        # ── action buttons + one-line hints under each ────────────────
         btn_row = QHBoxLayout(); btn_row.setSpacing(10)
         self._btn_watch = NeonButton("", style="cyan",   glow=True)
         self._btn_once  = NeonButton("", style="purple", glow=True)
         self._btn_check = NeonButton("", style="glass")
         self._btn_stop  = NeonButton("", style="danger")
         self._btn_conf  = NeonButton("", style="glass")
-        self._btn_stop.setVisible(False)
+        def _stack(btn: NeonButton) -> tuple[QWidget, QLabel]:
+            box = QWidget()
+            v = QVBoxLayout(box); v.setContentsMargins(0, 0, 0, 0); v.setSpacing(4)
+            v.addWidget(btn)
+            hint = QLabel("")
+            hint.setWordWrap(True)
+            hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            hint.setStyleSheet(
+                f"color: {TEXT}; font-size: 11px; line-height: 1.3;"
+                " font-style: italic;")
+            v.addWidget(hint)
+            return box, hint
 
-        for b in [self._btn_watch, self._btn_once, self._btn_check,
-                  self._btn_stop, self._btn_conf]:
+        box_watch, self._hint_watch = _stack(self._btn_watch)
+        box_once,  self._hint_once  = _stack(self._btn_once)
+        box_check, self._hint_check = _stack(self._btn_check)
+        box_stop,  self._hint_stop  = _stack(self._btn_stop)
+        box_conf,  self._hint_conf  = _stack(self._btn_conf)
+        self._stop_box = box_stop
+        self._stop_box.setVisible(False)
+        for b in (box_watch, box_once, box_check, box_stop, box_conf):
             btn_row.addWidget(b)
         lay.addLayout(btn_row)
 
@@ -1298,6 +1342,39 @@ class DashboardPage(QWidget):
         self._n_session, self._lbl_session = self._stat_card(stats_row, PURPLE)
         self._session_runs = 0
         lay.addLayout(stats_row)
+
+        # ── inline "Add another channel + playlist" panel ─────────────
+        self._add_card = GlassCard()
+        add_lay = QVBoxLayout(self._add_card)
+        add_lay.setContentsMargins(18, 14, 18, 14)
+        add_lay.setSpacing(8)
+
+        self._add_title = QLabel()
+        self._add_title.setStyleSheet(
+            f"color: {CYAN}; font-size: 12px; font-weight: 700; letter-spacing: 1.5px;")
+        add_lay.addWidget(self._add_title)
+
+        self._add_note = QLabel()
+        self._add_note.setStyleSheet(f"color: {TEXT}; font-size: 11px;")
+        self._add_note.setWordWrap(True)
+        add_lay.addWidget(self._add_note)
+
+        add_row = QHBoxLayout(); add_row.setSpacing(8)
+        self._add_chan  = QLineEdit(); self._add_chan.setMinimumHeight(38)
+        self._add_plist = QLineEdit(); self._add_plist.setMinimumHeight(38)
+        self._add_btn   = NeonButton("", style="cyan")
+        self._add_btn.setMinimumHeight(38)
+        self._add_btn.clicked.connect(self._add_inline_pair)
+        add_row.addWidget(self._add_chan, 2)
+        add_row.addWidget(self._add_plist, 3)
+        add_row.addWidget(self._add_btn, 0)
+        add_lay.addLayout(add_row)
+
+        self._add_status = QLabel("")
+        self._add_status.setStyleSheet(f"color: {SUCCESS}; font-size: 12px;")
+        self._add_status.setWordWrap(True)
+        add_lay.addWidget(self._add_status)
+        lay.addWidget(self._add_card)
 
         # ── log ───────────────────────────────────────────────────────
         log_hdr = QHBoxLayout()
@@ -1339,11 +1416,27 @@ class DashboardPage(QWidget):
         self._btn_check.setText(tr("d.btn.check"))
         self._btn_stop.setText(tr("d.btn.stop"))
         self._btn_conf.setText(tr("d.btn.config"))
+        # One-line hint shown below each button + tooltip on hover
+        for btn, hint, key in [
+            (self._btn_watch, self._hint_watch, "d.hint.watch"),
+            (self._btn_once,  self._hint_once,  "d.hint.once"),
+            (self._btn_check, self._hint_check, "d.hint.check"),
+            (self._btn_stop,  self._hint_stop,  "d.hint.stop"),
+            (self._btn_conf,  self._hint_conf,  "d.hint.config"),
+        ]:
+            hint.setText(tr(key))
+            btn.setToolTip(tr(key))
         self._lbl_posted.setText(tr("d.stat.posted"))
         self._lbl_failed.setText(tr("d.stat.failed"))
         self._lbl_session.setText(tr("d.stat.runs"))
         self._log_title.setText(tr("d.log.title"))
         self._btn_clear.setText(tr("d.log.clear"))
+        # Inline add-pair card
+        self._add_title.setText(tr("d.add.title"))
+        self._add_note.setText(tr("d.add.note"))
+        self._add_btn.setText(tr("d.add.btn"))
+        self._add_chan.setPlaceholderText(tr("w.step2.chan.placeholder"))
+        self._add_plist.setPlaceholderText(tr("w.step2.plist.placeholder"))
         self._status_badge.retranslate()
 
     # ── stat card helper ──────────────────────────────────────────────
@@ -1380,7 +1473,7 @@ class DashboardPage(QWidget):
         self._eq.set_active(True)
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(False)
-        self._btn_stop.setVisible(True)
+        self._stop_box.setVisible(True)
         self._log_line(tr("d.starting", mode.upper()))
 
     def _stop(self) -> None:
@@ -1393,16 +1486,29 @@ class DashboardPage(QWidget):
         self._eq.set_active(False)
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(True)
-        self._btn_stop.setVisible(False)
+        self._stop_box.setVisible(False)
         if ok:
             self._status_badge.set_done()
         else:
             self._status_badge.set_error()
 
     # ── log ───────────────────────────────────────────────────────────
+    _POSTED_RX = _re.compile(r"\]\s*\[\d+/\d+\]\s*Posted:\s")
+    _FAILED_RX = _re.compile(r"]\s*Failed to process\s")
+
     def _log_line(self, text: str) -> None:
         ts  = datetime.datetime.now().strftime("%H:%M:%S")
         txt = text.strip()
+
+        # Update live counters by parsing the bot's own log lines —
+        # bot logs each successful post as `[chan] [i/N] Posted: title`
+        # and each failure as `[chan] Failed to process video_id ...`.
+        if self._POSTED_RX.search(txt):
+            self._posted += 1
+            self._n_posted.setText(str(self._posted))
+        elif self._FAILED_RX.search(txt):
+            self._failed += 1
+            self._n_failed.setText(str(self._failed))
 
         # colour keywords
         if any(k in txt.lower() for k in ("error", "fail", "exception")):
@@ -1421,6 +1527,41 @@ class DashboardPage(QWidget):
         self._log.append(html)
         sb: QScrollBar = self._log.verticalScrollBar()
         sb.setValue(sb.maximum())
+
+    # ── inline add-pair ──────────────────────────────────────────────
+    def _add_inline_pair(self) -> None:
+        chan  = normalise_handle(self._add_chan.text())
+        plist = extract_playlist_id(self._add_plist.text())
+        if not chan.startswith("@") or not self._add_chan.text().strip():
+            self._add_status.setStyleSheet(f"color: {ERROR}; font-size: 12px;")
+            self._add_status.setText(tr("w.err.channel"))
+            return
+        if not plist:
+            self._add_status.setStyleSheet(f"color: {ERROR}; font-size: 12px;")
+            self._add_status.setText(tr("w.err.playlist"))
+            return
+
+        # Read existing .env, find highest CHANNEL_N_, append a new one
+        existing = ENV_PATH.read_text(encoding="utf-8", errors="ignore") \
+            if ENV_PATH.exists() else ""
+        next_idx = 1
+        for m in _re.finditer(r"^CHANNEL_(\d+)_PLAYLIST=", existing, _re.MULTILINE):
+            next_idx = max(next_idx, int(m.group(1)) + 1)
+
+        addition = (
+            f"CHANNEL_{next_idx}_NAME=channel{next_idx}\n"
+            f"CHANNEL_{next_idx}_PLAYLIST={plist}\n"
+            f"CHANNEL_{next_idx}_TELEGRAM={chan}\n"
+        )
+        if existing and not existing.endswith("\n"):
+            existing += "\n"
+        ENV_PATH.write_text(existing + addition, encoding="utf-8")
+
+        self._add_chan.clear()
+        self._add_plist.clear()
+        self._add_status.setStyleSheet(f"color: {SUCCESS}; font-size: 12px;")
+        self._add_status.setText(tr("d.add.ok", next_idx))
+        self._log_line(f"[+] Added pair #{next_idx}: {chan} ← {plist}")
 
 
 # ══════════════════════════════════════════════════════════════════════
