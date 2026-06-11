@@ -68,6 +68,43 @@ VIDEO_PATHS = [
 # True when launched with --tray (auto-start / background mode)
 START_HIDDEN = "--tray" in sys.argv
 
+# ── Bot-subprocess dispatcher ─────────────────────────────────────────
+# The GUI .exe doubles as the bot host: when relaunched with --bot-*
+# flags it imports the bot module and runs the corresponding mode,
+# instead of bringing up the Qt UI. This lets BotWorker simply
+# subprocess.Popen(sys.executable, '--bot-watch') and stream stdout —
+# no separate python.exe needed in the bundle.
+_BOT_MODES = {
+    "--bot-watch": "watch",
+    "--bot-once":  "once",
+    "--bot-check": "check",
+}
+
+
+def _run_bot_mode(mode: str) -> int:
+    # Make the bundled telegram_bot_music_youtube.py importable both
+    # in dev (next to gui_app.py) and inside the PyInstaller bundle
+    # (extracted into _MEIPASS).
+    if hasattr(sys, "_MEIPASS"):
+        sys.path.insert(0, sys._MEIPASS)
+    sys.path.insert(0, str(BASE_DIR))
+    try:
+        import telegram_bot_music_youtube as bot  # noqa: E402
+    except Exception as exc:                       # noqa: BLE001
+        print(f"[ERROR] Cannot import bot module: {exc}", flush=True)
+        return 1
+    fn = {"watch": bot._do_watch, "once": bot._do_run, "check": bot._do_check}.get(mode)
+    if not fn:
+        print(f"[ERROR] Unknown bot mode: {mode}", flush=True)
+        return 1
+    return int(fn() or 0)
+
+
+# Run early — before Qt is touched.
+for _flag, _mode in _BOT_MODES.items():
+    if _flag in sys.argv:
+        sys.exit(_run_bot_mode(_mode))
+
 # ── Palette ───────────────────────────────────────────────────────────
 BG       = "#050505"
 CYAN     = "#00d4ff"
@@ -361,11 +398,15 @@ class BotWorker(QThread):
     log    = pyqtSignal(str)   # new text line
     done   = pyqtSignal(bool)  # finished (success?)
 
-    # Menu choice sent to the bot's interactive stdin
-    _MENU_CHOICE: dict[str, bytes] = {
-        "watch": b"1\n",
-        "once":  b"2\n",
-        "check": b"3\n",
+    # CLI flag passed to sys.executable. In a PyInstaller build,
+    # sys.executable IS the GUI .exe — it dispatches on these flags
+    # at startup (see _run_bot_mode at the top of this file). In dev,
+    # sys.executable is python.exe so we explicitly point it at this
+    # script.
+    _MODE_FLAG = {
+        "watch": "--bot-watch",
+        "once":  "--bot-once",
+        "check": "--bot-check",
     }
 
     def __init__(self, mode: str, parent: QWidget | None = None) -> None:
@@ -378,37 +419,47 @@ class BotWorker(QThread):
             self._proc.terminate()
 
     def run(self) -> None:
-        if not BOT_SCRIPT.exists():
-            self.log.emit(f"[ERROR] Bot script not found: {BOT_SCRIPT}")
+        flag = self._MODE_FLAG.get(self.mode)
+        if not flag:
+            self.log.emit(f"[ERROR] Unknown mode: {self.mode}")
             self.done.emit(False)
             return
 
+        # Build the command. Frozen → re-launch self.exe with the flag.
+        # Dev      → python.exe gui_app.py --bot-* (so we hit the same dispatcher).
+        if getattr(sys, "frozen", False):
+            cmd = [sys.executable, flag]
+        else:
+            cmd = [sys.executable, str(Path(__file__).resolve()), flag]
+
+        # Don't pop up a console window on Windows when the GUI subprocess
+        # spawns the bot worker.
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
         try:
+            self.log.emit(f"[exec] {' '.join(cmd)}")
             self._proc = subprocess.Popen(
-                [sys.executable, str(BOT_SCRIPT)],
-                stdin=subprocess.PIPE,
+                cmd,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=str(BASE_DIR),
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                bufsize=1,
+                creationflags=creationflags,
             )
-            choice = self._MENU_CHOICE.get(self.mode, b"2\n")
-            if self._proc.stdin:
-                self._proc.stdin.write(choice.decode())
-                self._proc.stdin.flush()
-                if self.mode != "watch":
-                    self._proc.stdin.close()
-
             assert self._proc.stdout is not None
             for line in self._proc.stdout:
-                self.log.emit(line.rstrip())
-
+                if line:
+                    self.log.emit(line.rstrip())
             self._proc.wait()
             self.done.emit(self._proc.returncode == 0)
 
-        except Exception as exc:
+        except Exception as exc:                  # noqa: BLE001
             self.log.emit(f"[ERROR] {exc}")
             self.done.emit(False)
 
