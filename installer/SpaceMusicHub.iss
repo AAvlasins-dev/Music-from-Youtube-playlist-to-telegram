@@ -3,7 +3,7 @@
 ;  Compile with:  "C:\Program Files (x86)\Inno Setup 6\iscc.exe" SpaceMusicHub.iss
 ; =====================================================================
 #define MyAppName          "Space Music Hub"
-#define MyAppVersion       "1.7.7"
+#define MyAppVersion       "1.7.8"
 #define MyAppPublisher     "Andrejs Avlasins"
 #define MyAppURL           "https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram"
 #define MyAppExeName       "SpaceMusicHub.exe"
@@ -97,5 +97,35 @@ Type: files; Name: "{app}\bot.lock"
 Type: files; Name: "{app}\bot.log"
 Type: files; Name: "{app}\sent_videos_*.json"
 Type: files; Name: "{app}\pinned_msgs_*.json"
-; Keep .env on uninstall? Better not — it has a secret token. Remove it.
+Type: files; Name: "{app}\lang.txt"
+; .env carries the bot token — never leave it behind.
 Type: files; Name: "{app}\.env"
+
+[Code]
+// Both install and uninstall need to stop any running instance first
+// (the tray app + the spawned --bot-watch subprocess hold the .exe and
+// every DLL in _internal/ open, so Inno's deleter gets ERROR_SHARING_VIOLATION
+// and tells the user "some items could not be removed").
+
+procedure KillRunningInstances();
+var
+  ResultCode: Integer;
+begin
+  Exec(ExpandConstant('{sys}\taskkill.exe'),
+       '/F /T /IM SpaceMusicHub.exe',
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // Give the OS a moment to release file handles before deletion begins.
+  Sleep(800);
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  KillRunningInstances();
+  Result := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    KillRunningInstances();
+end;
