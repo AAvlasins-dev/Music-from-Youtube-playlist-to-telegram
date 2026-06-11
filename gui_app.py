@@ -274,6 +274,18 @@ LANGS: dict[str, dict[str, str]] = {
                           "файл лишь станет тяжелее и чаще будет упираться в лимит Telegram 50 МБ. "
                           "128 — уже немного хуже на слух. Поэтому 192 — золотая середина: "
                           "полное качество источника при разумном размере файла.",
+        # Schedule
+        "d.sched.title":   "РАСПИСАНИЕ ПРОВЕРОК",
+        "d.sched.every":   "Как часто проверять плейлист:",
+        "d.sched.1h":      "Каждый час",
+        "d.sched.2h":      "Каждые 2 часа",
+        "d.sched.day":     "Раз в день",
+        "d.sched.week":    "Раз в неделю",
+        "d.sched.autostart": "Запускать при старте Windows (в трее)",
+        "d.sched.now":     "Проверить сейчас",
+        "d.sched.hint":    "«СЛЕДИТЬ» проверяет с выбранным интервалом и оставляет программу работать. "
+                           "«Проверить сейчас» — разовый прогон прямо сейчас.",
+        "d.sched.saved":   "✓ Интервал сохранён: {0}. Запусти «СЛЕДИТЬ», чтобы применить.",
         "d.log.title":    "ЖУРНАЛ",
         "d.log.clear":    "очистить",
         "d.ready":        "Space Music Hub GUI готов.",
@@ -395,6 +407,17 @@ LANGS: dict[str, dict[str, str]] = {
                           "add quality the source never had; the file just gets bigger and hits "
                           "Telegram's 50 MB limit more often. 128 is already slightly worse to the ear. "
                           "So 192 is the sweet spot: the source's full quality at a sensible file size.",
+        "d.sched.title":   "CHECK SCHEDULE",
+        "d.sched.every":   "How often to check the playlist:",
+        "d.sched.1h":      "Every hour",
+        "d.sched.2h":      "Every 2 hours",
+        "d.sched.day":     "Once a day",
+        "d.sched.week":    "Once a week",
+        "d.sched.autostart": "Launch at Windows startup (in tray)",
+        "d.sched.now":     "Check now",
+        "d.sched.hint":    "“WATCH” checks at the chosen interval and keeps running. "
+                           "“Check now” does a single pass right away.",
+        "d.sched.saved":   "✓ Interval saved: {0}. Start “WATCH” to apply.",
         "d.log.title":    "LOG OUTPUT",
         "d.log.clear":    "clear",
         "d.ready":        "Space Music Hub GUI ready.",
@@ -511,6 +534,17 @@ LANGS: dict[str, dict[str, str]] = {
                           "kuras avotā nav: fails kļūst tikai lielāks un biežāk pārsniedz Telegram 50 MB "
                           "limitu. 128 jau ir nedaudz sliktāk. Tāpēc 192 ir optimālā izvēle: "
                           "avota pilnā kvalitāte ar saprātīgu faila izmēru.",
+        "d.sched.title":   "PĀRBAUDES GRAFIKS",
+        "d.sched.every":   "Cik bieži pārbaudīt sarakstu:",
+        "d.sched.1h":      "Katru stundu",
+        "d.sched.2h":      "Ik pēc 2 stundām",
+        "d.sched.day":     "Reizi dienā",
+        "d.sched.week":    "Reizi nedēļā",
+        "d.sched.autostart": "Palaist, sākoties Windows (teknē)",
+        "d.sched.now":     "Pārbaudīt tagad",
+        "d.sched.hint":    "“SEKOT” pārbauda izvēlētajā intervālā un turpina darboties. "
+                           "“Pārbaudīt tagad” veic vienu pārbaudi uzreiz.",
+        "d.sched.saved":   "✓ Intervāls saglabāts: {0}. Palaid “SEKOT”, lai piemērotu.",
         "d.log.title":    "ŽURNĀLS",
         "d.log.clear":    "tīrīt",
         "d.ready":        "Space Music Hub GUI gatavs.",
@@ -578,6 +612,76 @@ def normalise_handle(text: str) -> str:
         text = link.group(1)
     text = text.lstrip("@")
     return f"@{text}" if text else ""
+
+
+def read_env_value(key: str, default: str = "") -> str:
+    """Read a single KEY=value from .env, or *default* if missing."""
+    if not ENV_PATH.exists():
+        return default
+    for line in ENV_PATH.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1].strip()
+    return default
+
+
+def set_env_value(key: str, value: str) -> None:
+    """Update KEY=value in .env in place, or append it if not present."""
+    lines: list[str] = []
+    if ENV_PATH.exists():
+        lines = ENV_PATH.read_text(encoding="utf-8", errors="ignore").splitlines()
+    out, found = [], False
+    for line in lines:
+        if line.strip().startswith(f"{key}="):
+            out.append(f"{key}={value}")
+            found = True
+        else:
+            out.append(line)
+    if not found:
+        out.append(f"{key}={value}")
+    ENV_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+# ── Windows auto-start (HKCU Run key) ─────────────────────────────────
+_RUN_KEY  = r"Software\Microsoft\Windows\CurrentVersion\Run"
+_RUN_NAME = "Space Music Hub"
+
+
+def autostart_enabled() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as k:
+            winreg.QueryValueEx(k, _RUN_NAME)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def set_autostart(enabled: bool) -> bool:
+    """Enable/disable launch-at-Windows-startup via the HKCU Run key.
+
+    Only meaningful in a frozen build (we register the real .exe path).
+    Returns the resulting state.
+    """
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY, 0,
+                            winreg.KEY_SET_VALUE) as k:
+            if enabled:
+                winreg.SetValueEx(k, _RUN_NAME, 0, winreg.REG_SZ,
+                                  f'"{sys.executable}" --tray')
+            else:
+                try:
+                    winreg.DeleteValue(k, _RUN_NAME)
+                except FileNotFoundError:
+                    pass
+        return enabled
+    except Exception:  # noqa: BLE001
+        return autostart_enabled()
 
 
 # ── Global stylesheet ─────────────────────────────────────────────────
@@ -1475,6 +1579,72 @@ class DashboardPage(QWidget):
             btn_row.addWidget(b)
         lay.addLayout(btn_row)
 
+        # ── check schedule card ───────────────────────────────────────
+        # Maps the user-facing choices to WATCH_INTERVAL seconds.
+        self._SCHED_OPTS = [
+            ("1h",   "d.sched.1h",   3600),
+            ("2h",   "d.sched.2h",   7200),
+            ("day",  "d.sched.day",  86400),
+            ("week", "d.sched.week", 604800),
+        ]
+        sched_card = GlassCard()
+        sc = QVBoxLayout(sched_card)
+        sc.setContentsMargins(18, 14, 18, 14); sc.setSpacing(10)
+
+        self._sched_title = QLabel()
+        self._sched_title.setStyleSheet(
+            f"color: {CYAN}; font-size: 11px; font-weight: 700; letter-spacing: 2px;")
+        sc.addWidget(self._sched_title)
+
+        self._sched_every = QLabel()
+        self._sched_every.setStyleSheet(f"color: {WHITE}; font-size: 12px; font-weight: 600;")
+        sc.addWidget(self._sched_every)
+
+        # interval pills + "check now"
+        pill_row = QHBoxLayout(); pill_row.setSpacing(8)
+        cur = read_env_value("WATCH_INTERVAL", "3600")
+        try:
+            self._sched_secs = int(cur)
+        except ValueError:
+            self._sched_secs = 3600
+        if self._sched_secs not in (3600, 7200, 86400, 604800):
+            self._sched_secs = 3600
+        self._sched_btns: dict[str, QPushButton] = {}
+        for key, _lbl_key, secs in self._SCHED_OPTS:
+            b = QPushButton("")
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setCheckable(True)
+            b.setMinimumHeight(34)
+            b.clicked.connect(lambda _, s=secs: self._set_interval(s))
+            self._sched_btns[key] = b
+            pill_row.addWidget(b)
+        pill_row.addStretch()
+        self._sched_now = NeonButton("", style="purple")
+        self._sched_now.setMinimumHeight(34)
+        self._sched_now.clicked.connect(lambda: self._start("once"))
+        pill_row.addWidget(self._sched_now)
+        sc.addLayout(pill_row)
+
+        # autostart checkbox-style button
+        self._sched_auto = QPushButton("")
+        self._sched_auto.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._sched_auto.setCheckable(True)
+        self._sched_auto.setMinimumHeight(34)
+        self._sched_auto.clicked.connect(self._toggle_autostart)
+        sc.addWidget(self._sched_auto)
+
+        self._sched_hint = QLabel()
+        self._sched_hint.setWordWrap(True)
+        self._sched_hint.setStyleSheet(f"color: {TEXT}; font-size: 10px; font-style: italic;")
+        sc.addWidget(self._sched_hint)
+
+        self._sched_status = QLabel("")
+        self._sched_status.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
+        self._sched_status.setWordWrap(True)
+        sc.addWidget(self._sched_status)
+        lay.addWidget(sched_card)
+        self._restyle_sched()
+
         # ── audio quality — fixed at the optimal 192 kbps ─────────────
         br_card = GlassCard()
         br_lay = QHBoxLayout(br_card)
@@ -1629,6 +1799,14 @@ class DashboardPage(QWidget):
         self._br_label.setText(tr("d.bitrate"))
         self._br_badge.setText(tr("d.bitrate.value"))
         self._br_why.setText(tr("d.bitrate.why"))
+        # Schedule card
+        self._sched_title.setText(tr("d.sched.title"))
+        self._sched_every.setText(tr("d.sched.every"))
+        for key, lbl_key, _secs in self._SCHED_OPTS:
+            self._sched_btns[key].setText(tr(lbl_key))
+        self._sched_now.setText(tr("d.sched.now"))
+        self._sched_hint.setText(tr("d.sched.hint"))
+        self._restyle_sched()
         self._restyle_mode_btn()
         # Inline add-pair card
         self._add_title.setText(tr("d.add.title"))
@@ -1711,6 +1889,43 @@ class DashboardPage(QWidget):
             f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
             f"  border-radius: 8px; padding: 2px 12px; font-size: 11px; font-weight: 700; }}"
             f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
+
+    # ── schedule ──────────────────────────────────────────────────────
+    def _restyle_sched(self) -> None:
+        for key, _lbl_key, secs in self._SCHED_OPTS:
+            btn = self._sched_btns[key]
+            on = (secs == self._sched_secs)
+            btn.setChecked(on)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {'#020202' if on else WHITE};"
+                f"  background: {CYAN if on else 'rgba(255,255,255,6)'};"
+                f"  border: 1px solid {'rgba(0,212,255,80)' if on else 'rgba(255,255,255,16)'};"
+                f"  border-radius: 8px; padding: 2px 14px; font-size: 12px; font-weight: 700; }}"
+                f"QPushButton:hover {{ background: {'#30eaff' if on else 'rgba(255,255,255,12)'}; }}")
+        # autostart toggle visual
+        on = autostart_enabled()
+        self._sched_auto.setChecked(on)
+        check = "☑" if on else "☐"
+        self._sched_auto.setText(f"  {check}  {tr('d.sched.autostart')}")
+        self._sched_auto.setStyleSheet(
+            f"QPushButton {{ text-align: left; color: {WHITE};"
+            f"  background: {'rgba(0,212,255,12)' if on else 'rgba(255,255,255,5)'};"
+            f"  border: 1px solid {'rgba(0,212,255,40)' if on else 'rgba(255,255,255,12)'};"
+            f"  border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: rgba(0,212,255,18); }}")
+
+    def _set_interval(self, secs: int) -> None:
+        self._sched_secs = secs
+        self._restyle_sched()
+        set_env_value("WATCH_INTERVAL", str(secs))
+        label = next((tr(lk) for k, lk, s in self._SCHED_OPTS if s == secs), str(secs))
+        self._sched_status.setStyleSheet(f"color: {SUCCESS}; font-size: 11px;")
+        self._sched_status.setText(tr("d.sched.saved", label))
+
+    def _toggle_autostart(self) -> None:
+        new_state = not autostart_enabled()
+        set_autostart(new_state)
+        self._restyle_sched()
 
     def _toggle_mode(self) -> None:
         self._simple_mode = not self._simple_mode

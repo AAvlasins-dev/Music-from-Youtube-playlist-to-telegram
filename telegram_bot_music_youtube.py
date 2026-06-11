@@ -1086,6 +1086,20 @@ def _do_check() -> int:
     return 0
 
 
+def _format_interval(seconds: int) -> str:
+    """Human-friendly interval label for logs (RU)."""
+    if seconds % 604800 == 0:
+        n = seconds // 604800
+        return "раз в неделю" if n == 1 else f"каждые {n} нед."
+    if seconds % 86400 == 0:
+        n = seconds // 86400
+        return "раз в день" if n == 1 else f"каждые {n} дн."
+    if seconds % 3600 == 0:
+        n = seconds // 3600
+        return "каждый час" if n == 1 else f"каждые {n} ч."
+    return f"каждые {max(1, seconds // 60)} мин"
+
+
 async def watch() -> None:
     """Run forever: post new tracks, then re-check every WATCH_INTERVAL seconds.
 
@@ -1094,12 +1108,12 @@ async def watch() -> None:
     """
     _validate_config()
     interval = max(60, int(os.getenv("WATCH_INTERVAL", "900")))
-    mins = interval // 60
+    human = _format_interval(interval)
     print()
     print("Программа работает. ОСТАВЬ ЭТО ОКНО ОТКРЫТЫМ —")
-    print(f"новые треки проверяются каждые {mins} мин и сами уходят в канал.")
+    print(f"новые треки проверяются {human} и сами уходят в канал.")
     print("Чтобы остановить — закрой окно или нажми Ctrl+C.\n")
-    logger.info("Watch mode started (interval %d min).", mins)
+    logger.info("Watch mode started (interval: %s).", human)
 
     cycle = 0
     while True:
@@ -1109,7 +1123,7 @@ async def watch() -> None:
             result = await post_new_videos(channel)
             posted += result.posted
         logger.info(
-            "Cycle %d done — posted %d. Next check in %d min.", cycle, posted, mins
+            "Cycle %d done — posted %d. Next check %s.", cycle, posted, human
         )
         await asyncio.sleep(interval)
 
