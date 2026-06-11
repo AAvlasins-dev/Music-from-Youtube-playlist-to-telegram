@@ -894,10 +894,14 @@ class NeonButton(QPushButton):
 class GlassCard(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        # Dark, mostly-opaque glass: the old near-transparent white fill
+        # (alpha 5) let the busy background bleed through and made white
+        # text hard to read. A solid dark panel reads cleanly and matches
+        # the log area.
         self.setStyleSheet("""
             QFrame {
-                background: rgba(255,255,255,5);
-                border: 1px solid rgba(255,255,255,10);
+                background: rgba(10,13,22,170);
+                border: 1px solid rgba(255,255,255,18);
                 border-radius: 18px;
             }
         """)
