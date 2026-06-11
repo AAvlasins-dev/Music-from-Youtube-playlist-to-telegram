@@ -124,6 +124,324 @@ SUCCESS  = "#34d399"
 ERROR    = "#f87171"
 AMBER    = "#f59e0b"
 
+# ══════════════════════════════════════════════════════════════════════
+#  i18n — three-language string table (Russian / English / Latvian)
+# ══════════════════════════════════════════════════════════════════════
+LANG_SETTING_FILE = BASE_DIR / "lang.txt"
+
+
+def _detect_lang() -> str:
+    """Pick a UI language: explicit user choice → Windows locale → English."""
+    # 1. Explicit override (persisted from a previous switch)
+    if LANG_SETTING_FILE.exists():
+        v = LANG_SETTING_FILE.read_text(encoding="utf-8", errors="ignore").strip().lower()
+        if v in ("ru", "en", "lv"):
+            return v
+    # 2. Inherit from Windows display language (QLocale is more reliable
+    #    than `locale.getlocale()` on Windows for the UI language).
+    try:
+        from PyQt6.QtCore import QLocale
+        code = QLocale.system().name().lower()  # e.g. "ru_ru"
+        for prefix in ("ru", "lv"):
+            if code.startswith(prefix):
+                return prefix
+    except Exception:
+        pass
+    return "en"
+
+
+LANGS: dict[str, dict[str, str]] = {
+    "ru": {
+        # Nav
+        "nav.title":    "Space Music Hub",
+        "nav.badge":    "v2.0 · GUI",
+
+        # Wizard stepper
+        "step.1":       "ТОКЕН",
+        "step.2":       "КАНАЛ",
+        "step.3":       "ГОТОВО",
+
+        # Wizard step 1 — bot token
+        "w.step1.title":   "Шаг 1 — создаём Telegram-бота",
+        "w.step1.sub":     "Нужно один раз создать своего бота через @BotFather и взять у него токен.",
+        "w.step1.howto": (
+            "<ol style='margin:0 0 4px 18px; padding:0; line-height:1.7;'>"
+            "<li>Открой Telegram (приложение на телефоне или <a style='color:#00d4ff' href='https://web.telegram.org'>web.telegram.org</a>).</li>"
+            "<li>В поиске сверху напиши <b>@BotFather</b> и открой бота с синей галочкой ✓.</li>"
+            "<li>Нажми кнопку <b>Start</b> (или напиши <code>/start</code>).</li>"
+            "<li>Напиши команду <code>/newbot</code>.</li>"
+            "<li>BotFather спросит <b>имя</b> бота — придумай любое (например: <i>Моя музыка</i>).</li>"
+            "<li>Потом спросит <b>username</b> — он должен заканчиваться на <code>bot</code> "
+            "(например: <code>mymusic2026_bot</code>). Если занят — попробуй другое.</li>"
+            "<li>BotFather пришлёт сообщение со строкой типа <code>8280083661:AAE7tJTov...</code> — "
+            "<b>это твой токен</b>. Скопируй его целиком.</li>"
+            "</ol>"
+            "<p style='margin:8px 0 0; color:#f59e0b'>⚠ Никому не передавай этот токен — "
+            "кто им владеет, тот управляет твоим ботом.</p>"
+        ),
+        "w.step1.input.placeholder": "Вставь токен сюда: 1234567890:AAFxxxxxxxxxxxxxxxxx",
+
+        # Wizard step 2 — channel + playlist
+        "w.step2.title":   "Шаг 2 — куда и откуда брать музыку",
+        "w.step2.sub":     "Нужен публичный Telegram-канал, в который бот будет постить треки, и YouTube-плейлист, который он будет мониторить.",
+        "w.step2.howto": (
+            "<b style='color:#f0f4ff'>А. Канал в Telegram:</b>"
+            "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
+            "<li>В Telegram: меню (≡) → <b>Создать канал</b> → дай название → выбери <b>Публичный</b>.</li>"
+            "<li>Придумай ему публичную ссылку, например <code>my_music_2026</code>. Полностью это будет "
+            "<code>@my_music_2026</code>.</li>"
+            "<li>Открой канал → ⋯ (три точки) → <b>Управление каналом</b> → <b>Администраторы</b> → "
+            "<b>Добавить администратора</b> → найди своего бота по имени → добавь.</li>"
+            "<li>Поставь ему галочки <b>«Размещать сообщения»</b> и <b>«Закреплять сообщения»</b>. Без них бот не сможет постить.</li>"
+            "</ol>"
+            "<b style='color:#f0f4ff'>Б. Плейлист на YouTube:</b>"
+            "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
+            "<li>Открой YouTube, найди свой плейлист.</li>"
+            "<li>Скопируй из адресной строки браузера ссылку — она должна выглядеть так: "
+            "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
+            "<li>Вставь её в нижнее поле.</li>"
+            "</ol>"
+        ),
+        "w.step2.chan.placeholder":  "@название_канала (с @ в начале)",
+        "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+
+        # Wizard step 3 — review
+        "w.step3.title":  "Шаг 3 — проверь и запусти",
+        "w.step3.sub":    "Если всё правильно — жми «Сохранить и запустить». Настройки можно поменять потом через кнопку ⚙ Настройки.",
+        "w.review.token":    "Токен бота",
+        "w.review.channel":  "Канал",
+        "w.review.playlist": "Плейлист",
+
+        # Wizard buttons
+        "w.btn.back":     "← Назад",
+        "w.btn.next":     "Дальше →",
+        "w.btn.save":     "Сохранить и запустить →",
+
+        # Wizard errors
+        "w.err.token":    "Токен похож на неправильный — он содержит ':' и длиннее 20 символов. Скопируй ещё раз из BotFather.",
+        "w.err.channel":  "Имя канала должно начинаться с @ (например @my_music_channel).",
+        "w.err.playlist": "Вставь ссылку на YouTube-плейлист или его ID.",
+
+        # Dashboard
+        "d.cfg.ok":       "✓ Настройки загружены",
+        "d.cfg.miss":     "⚠ Нет настроек — открой мастер",
+        "d.btn.watch":    "▶  СЛЕДИТЬ",
+        "d.btn.once":     "⚡  ОДИН РАЗ",
+        "d.btn.check":    "🔍  ПРОВЕРИТЬ",
+        "d.btn.stop":     "■  СТОП",
+        "d.btn.config":   "⚙  НАСТРОЙКИ",
+        "d.stat.posted":  "ТРЕКОВ ОТПРАВЛЕНО",
+        "d.stat.failed":  "ОШИБОК",
+        "d.stat.runs":    "ЗАПУСКОВ ЗА СЕССИЮ",
+        "d.log.title":    "ЖУРНАЛ",
+        "d.log.clear":    "очистить",
+        "d.ready":        "Space Music Hub GUI готов.",
+        "d.no_env":       "Файла .env нет — сначала открой ⚙ НАСТРОЙКИ.",
+        "d.starting":     "▶  Запускаю режим [{0}]…",
+        "d.stopped":      "■  Остановлено пользователем.",
+
+        # Status badge
+        "badge.idle":     "ОЖИДАНИЕ",
+        "badge.running":  "РАБОТАЕТ",
+        "badge.error":    "ОШИБКА",
+        "badge.done":     "ГОТОВО",
+
+        # Tray
+        "tray.open":      "Открыть окно",
+        "tray.watch":     "▶ Начать слежение",
+        "tray.stop":      "■ Стоп",
+        "tray.quit":      "Выйти",
+        "tray.hidden":    "Программа продолжает работать в трее. Нажми правой кнопкой по иконке для меню.",
+    },
+    "en": {
+        "nav.title":    "Space Music Hub",
+        "nav.badge":    "v2.0 · GUI",
+        "step.1":       "TOKEN",
+        "step.2":       "CHANNEL",
+        "step.3":       "DONE",
+        "w.step1.title":   "Step 1 — Create your Telegram bot",
+        "w.step1.sub":     "You need to create your own bot via @BotFather once and copy the token.",
+        "w.step1.howto": (
+            "<ol style='margin:0 0 4px 18px; padding:0; line-height:1.7;'>"
+            "<li>Open Telegram (mobile app or <a style='color:#00d4ff' href='https://web.telegram.org'>web.telegram.org</a>).</li>"
+            "<li>In the search bar type <b>@BotFather</b> and open the bot with the blue checkmark ✓.</li>"
+            "<li>Tap <b>Start</b> (or type <code>/start</code>).</li>"
+            "<li>Type the command <code>/newbot</code>.</li>"
+            "<li>BotFather asks for the bot <b>name</b> — anything (e.g. <i>My music</i>).</li>"
+            "<li>Then for the <b>username</b> — it must end with <code>bot</code> "
+            "(e.g. <code>mymusic2026_bot</code>). Try another if taken.</li>"
+            "<li>BotFather replies with a string like <code>8280083661:AAE7tJTov...</code> — "
+            "<b>that's your token</b>. Copy it completely.</li>"
+            "</ol>"
+            "<p style='margin:8px 0 0; color:#f59e0b'>⚠ Never share this token — "
+            "whoever has it controls your bot.</p>"
+        ),
+        "w.step1.input.placeholder": "Paste token here: 1234567890:AAFxxxxxxxxxxxxxxxxx",
+        "w.step2.title":   "Step 2 — where to post, what to mirror",
+        "w.step2.sub":     "You need a public Telegram channel for the bot to post into, and a YouTube playlist for it to watch.",
+        "w.step2.howto": (
+            "<b style='color:#f0f4ff'>A. Telegram channel:</b>"
+            "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
+            "<li>In Telegram: menu (≡) → <b>Create Channel</b> → name it → choose <b>Public</b>.</li>"
+            "<li>Set a public link, e.g. <code>my_music_2026</code>. The full handle is "
+            "<code>@my_music_2026</code>.</li>"
+            "<li>Open the channel → ⋯ → <b>Manage Channel</b> → <b>Administrators</b> → "
+            "<b>Add Administrator</b> → find your bot by name → add it.</li>"
+            "<li>Give it the <b>“Post Messages”</b> and <b>“Pin Messages”</b> permissions. Without these the bot can't post.</li>"
+            "</ol>"
+            "<b style='color:#f0f4ff'>B. YouTube playlist:</b>"
+            "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
+            "<li>Open YouTube, find your playlist.</li>"
+            "<li>Copy the URL from the address bar — it looks like "
+            "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
+            "<li>Paste it into the field below.</li>"
+            "</ol>"
+        ),
+        "w.step2.chan.placeholder":  "@channel_handle (must start with @)",
+        "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+        "w.step3.title":  "Step 3 — review & launch",
+        "w.step3.sub":    "Looks good? Click Save & Launch. You can change settings later via ⚙ CONFIG.",
+        "w.review.token":    "Bot token",
+        "w.review.channel":  "Channel",
+        "w.review.playlist": "Playlist",
+        "w.btn.back":     "← Back",
+        "w.btn.next":     "Continue →",
+        "w.btn.save":     "Save & Launch →",
+        "w.err.token":    "That token doesn't look right — it should contain ':' and be longer than 20 characters. Copy it again from BotFather.",
+        "w.err.channel":  "Channel must start with @ (e.g. @my_music_channel).",
+        "w.err.playlist": "Paste a YouTube playlist URL or ID.",
+        "d.cfg.ok":       "✓ Config loaded",
+        "d.cfg.miss":     "⚠ No config — run wizard",
+        "d.btn.watch":    "▶  WATCH",
+        "d.btn.once":     "⚡  RUN ONCE",
+        "d.btn.check":    "🔍  CHECK",
+        "d.btn.stop":     "■  STOP",
+        "d.btn.config":   "⚙  CONFIG",
+        "d.stat.posted":  "TRACKS POSTED",
+        "d.stat.failed":  "FAILED",
+        "d.stat.runs":    "SESSION RUNS",
+        "d.log.title":    "LOG OUTPUT",
+        "d.log.clear":    "clear",
+        "d.ready":        "Space Music Hub GUI ready.",
+        "d.no_env":       "No .env found — open ⚙ CONFIG first.",
+        "d.starting":     "▶  Starting [{0}] mode…",
+        "d.stopped":      "■  Stopped by user.",
+        "badge.idle":     "IDLE",
+        "badge.running":  "RUNNING",
+        "badge.error":    "ERROR",
+        "badge.done":     "DONE",
+        "tray.open":      "Open Dashboard",
+        "tray.watch":     "▶ Start Watching",
+        "tray.stop":      "■ Stop",
+        "tray.quit":      "Quit",
+        "tray.hidden":    "Still running in the tray — right-click the icon for menu.",
+    },
+    "lv": {
+        "nav.title":    "Space Music Hub",
+        "nav.badge":    "v2.0 · GUI",
+        "step.1":       "TOKEN",
+        "step.2":       "KANĀLS",
+        "step.3":       "GATAVS",
+        "w.step1.title":   "1. solis — izveido savu Telegram botu",
+        "w.step1.sub":     "Vienreiz jāizveido savs bots caur @BotFather un jāpaņem tā token.",
+        "w.step1.howto": (
+            "<ol style='margin:0 0 4px 18px; padding:0; line-height:1.7;'>"
+            "<li>Atver Telegram (lietotne vai <a style='color:#00d4ff' href='https://web.telegram.org'>web.telegram.org</a>).</li>"
+            "<li>Meklēšanas joslā ieraksti <b>@BotFather</b> un atver botu ar zilo ķeksīti ✓.</li>"
+            "<li>Nospied <b>Start</b> (vai ieraksti <code>/start</code>).</li>"
+            "<li>Ieraksti komandu <code>/newbot</code>.</li>"
+            "<li>BotFather prasīs bota <b>vārdu</b> — jebkurš (piem. <i>Mana mūzika</i>).</li>"
+            "<li>Tad prasīs <b>username</b> — tam jābeidzas ar <code>bot</code> "
+            "(piem. <code>mymusic2026_bot</code>). Ja aizņemts — mēģini citu.</li>"
+            "<li>BotFather atsūtīs virkni <code>8280083661:AAE7tJTov...</code> — "
+            "<b>tas ir tavs token</b>. Nokopē to pilnībā.</li>"
+            "</ol>"
+            "<p style='margin:8px 0 0; color:#f59e0b'>⚠ Nekad nedalies ar šo tokenu — "
+            "kuram tas ir, tas vada tavu botu.</p>"
+        ),
+        "w.step1.input.placeholder": "Ielīmē tokenu: 1234567890:AAFxxxxxxxxxxxxxxxxx",
+        "w.step2.title":   "2. solis — kur publicēt un ko sekot",
+        "w.step2.sub":     "Vajag publisku Telegram kanālu, kurā bots publicēs, un YouTube atskaņošanas sarakstu, kuru tas vēros.",
+        "w.step2.howto": (
+            "<b style='color:#f0f4ff'>A. Telegram kanāls:</b>"
+            "<ol style='margin:4px 0 10px 18px; padding:0; line-height:1.6;'>"
+            "<li>Telegram: izvēlne (≡) → <b>Izveidot kanālu</b> → dod vārdu → izvēlies <b>Publisks</b>.</li>"
+            "<li>Iestati publisko saiti, piem. <code>my_music_2026</code>. Pilns: <code>@my_music_2026</code>.</li>"
+            "<li>Atver kanālu → ⋯ → <b>Pārvaldīt kanālu</b> → <b>Administratori</b> → "
+            "<b>Pievienot administratoru</b> → atrodi savu botu → pievieno.</li>"
+            "<li>Iedod tam atļaujas <b>«Publicēt ziņas»</b> un <b>«Piespraust ziņas»</b>.</li>"
+            "</ol>"
+            "<b style='color:#f0f4ff'>B. YouTube atskaņošanas saraksts:</b>"
+            "<ol style='margin:4px 0 0 18px; padding:0; line-height:1.6;'>"
+            "<li>Atver YouTube, atrodi savu sarakstu.</li>"
+            "<li>Nokopē saiti no adreses joslas: "
+            "<code>https://www.youtube.com/playlist?list=PLxxxxxxx</code>.</li>"
+            "<li>Ielīmē to lejasējā laukā.</li>"
+            "</ol>"
+        ),
+        "w.step2.chan.placeholder":  "@kanala_vards (jāsākas ar @)",
+        "w.step2.plist.placeholder": "https://www.youtube.com/playlist?list=...",
+        "w.step3.title":  "3. solis — pārbaudi un palaid",
+        "w.step3.sub":    "Viss kārtībā? Spied «Saglabāt un palaist». Vēlāk var mainīt caur ⚙ IESTATĪJUMI.",
+        "w.review.token":    "Bota token",
+        "w.review.channel":  "Kanāls",
+        "w.review.playlist": "Saraksts",
+        "w.btn.back":     "← Atpakaļ",
+        "w.btn.next":     "Tālāk →",
+        "w.btn.save":     "Saglabāt un palaist →",
+        "w.err.token":    "Token nelikās pareizs — tajā jābūt ':' un tas garāks par 20 simboliem. Kopē vēlreiz no BotFather.",
+        "w.err.channel":  "Kanāla vārdam jāsākas ar @ (piem. @my_music_channel).",
+        "w.err.playlist": "Ielīmē YouTube saraksta saiti vai ID.",
+        "d.cfg.ok":       "✓ Iestatījumi ielādēti",
+        "d.cfg.miss":     "⚠ Nav iestatījumu — palaid vedni",
+        "d.btn.watch":    "▶  SEKOT",
+        "d.btn.once":     "⚡  REIZI",
+        "d.btn.check":    "🔍  PĀRBAUDĪT",
+        "d.btn.stop":     "■  STOP",
+        "d.btn.config":   "⚙  IESTATĪJUMI",
+        "d.stat.posted":  "PUBLICĒTI",
+        "d.stat.failed":  "KĻŪDAS",
+        "d.stat.runs":    "PALAIŠANAS",
+        "d.log.title":    "ŽURNĀLS",
+        "d.log.clear":    "tīrīt",
+        "d.ready":        "Space Music Hub GUI gatavs.",
+        "d.no_env":       "Nav .env — vispirms atver ⚙ IESTATĪJUMI.",
+        "d.starting":     "▶  Sāk [{0}] režīmu…",
+        "d.stopped":      "■  Apturēts.",
+        "badge.idle":     "GAIDA",
+        "badge.running":  "STRĀDĀ",
+        "badge.error":    "KĻŪDA",
+        "badge.done":     "PABEIGTS",
+        "tray.open":      "Atvērt logu",
+        "tray.watch":     "▶ Sākt sekot",
+        "tray.stop":      "■ Stop",
+        "tray.quit":      "Iziet",
+        "tray.hidden":    "Programma joprojām strādā teknē. Labais klikšķis uz ikonas — izvēlne.",
+    },
+}
+
+
+LANG = _detect_lang()
+
+
+def tr(key: str, *args) -> str:
+    s = LANGS.get(LANG, {}).get(key) or LANGS["en"].get(key, key)
+    if args:
+        try: s = s.format(*args)
+        except Exception: pass
+    return s
+
+
+def set_lang(code: str) -> None:
+    global LANG
+    if code in LANGS:
+        LANG = code
+        try:
+            LANG_SETTING_FILE.write_text(code, encoding="utf-8")
+        except OSError:
+            pass
+
+
 # ── Global stylesheet ─────────────────────────────────────────────────
 QSS = f"""
 QWidget {{
@@ -398,7 +716,8 @@ class StatusBadge(QWidget):
         self._pulse.stop()
         self._dot.setStyleSheet(f"color: {MUTED}")
         self._lbl.setStyleSheet(f"color: {MUTED}; letter-spacing: 2px;")
-        self._lbl.setText("IDLE")
+        self._state = "idle"
+        self._lbl.setText(tr("badge.idle"))
         self.setStyleSheet("QWidget { background: rgba(255,255,255,4);"
                            " border: 1px solid rgba(255,255,255,10);"
                            " border-radius: 999px; }")
@@ -407,7 +726,8 @@ class StatusBadge(QWidget):
         self._pulse.start(550)
         self._dot.setStyleSheet(f"color: {SUCCESS}")
         self._lbl.setStyleSheet(f"color: {CYAN}; letter-spacing: 2px;")
-        self._lbl.setText("RUNNING")
+        self._state = "running"
+        self._lbl.setText(tr("badge.running"))
         self.setStyleSheet("QWidget { background: rgba(0,212,255,8);"
                            " border: 1px solid rgba(0,212,255,30);"
                            " border-radius: 999px; }")
@@ -416,7 +736,8 @@ class StatusBadge(QWidget):
         self._pulse.stop()
         self._dot.setStyleSheet(f"color: {ERROR}")
         self._lbl.setStyleSheet(f"color: {ERROR}; letter-spacing: 2px;")
-        self._lbl.setText("ERROR")
+        self._state = "error"
+        self._lbl.setText(tr("badge.error"))
         self.setStyleSheet("QWidget { background: rgba(248,113,113,8);"
                            " border: 1px solid rgba(248,113,113,30);"
                            " border-radius: 999px; }")
@@ -425,10 +746,14 @@ class StatusBadge(QWidget):
         self._pulse.stop()
         self._dot.setStyleSheet(f"color: {SUCCESS}")
         self._lbl.setStyleSheet(f"color: {SUCCESS}; letter-spacing: 2px;")
-        self._lbl.setText("DONE")
+        self._state = "done"
+        self._lbl.setText(tr("badge.done"))
         self.setStyleSheet("QWidget { background: rgba(52,211,153,8);"
                            " border: 1px solid rgba(52,211,153,30);"
                            " border-radius: 999px; }")
+
+    def retranslate(self) -> None:
+        getattr(self, f"set_{self._state}", self.set_idle)()
 
     def _blink(self) -> None:
         self._blink_state = not self._blink_state
@@ -567,6 +892,7 @@ class WizardPage(QWidget):
         self._token = ""
         self._channels: list[dict] = []
         self._build()
+        self.retranslate()
 
     # ── build ──────────────────────────────────────────────────────────
     def _build(self) -> None:
@@ -574,46 +900,65 @@ class WizardPage(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Card wider now to fit the detailed instructions, scrollable
+        # vertically if window is short.
+        from PyQt6.QtWidgets import QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setMaximumWidth(720)
+        root.addWidget(scroll, alignment=Qt.AlignmentFlag.AlignCenter)
+
         card = GlassCard()
-        card.setFixedWidth(560)
+        card.setMinimumWidth(640)
         inner = QVBoxLayout(card)
-        inner.setContentsMargins(44, 40, 44, 40)
-        inner.setSpacing(18)
+        inner.setContentsMargins(40, 32, 40, 32)
+        inner.setSpacing(16)
 
-        # ── step dots ─────────────────────────────────────────────────
-        dot_row = QHBoxLayout()
-        dot_row.setSpacing(6)
-        self._dots: list[QLabel] = []
+        # ── numbered step pills ───────────────────────────────────────
+        pill_row = QHBoxLayout()
+        pill_row.setSpacing(0)
+        self._pills: list[QLabel] = []
+        self._pill_seps: list[QLabel] = []
         for i in range(3):
-            d = QLabel("●" if i == 0 else "○")
-            d.setFont(QFont("Segoe UI", 12))
-            d.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            dot_row.addWidget(d)
-            self._dots.append(d)
+            pill = QLabel()
+            pill.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            pill.setMinimumHeight(36)
+            pill.setMinimumWidth(150)
+            pill.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            pill_row.addWidget(pill)
+            self._pills.append(pill)
             if i < 2:
-                sep = QLabel("──")
-                sep.setStyleSheet(f"color: {MUTED}; font-size: 13px;")
-                dot_row.addWidget(sep)
-        dot_row.addStretch()
-        inner.addLayout(dot_row)
+                sep = QLabel("─" * 4)
+                sep.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                sep.setStyleSheet(f"color: {MUTED}; padding: 0 4px;")
+                pill_row.addWidget(sep)
+                self._pill_seps.append(sep)
+        inner.addLayout(pill_row)
 
-        # ── labels ────────────────────────────────────────────────────
-        self._step_lbl = QLabel("STEP 1 OF 3")
-        self._step_lbl.setStyleSheet(
-            f"color: {CYAN}; font-size: 10px; font-weight: 700; letter-spacing: 3px;")
-        inner.addWidget(self._step_lbl)
-
-        self._title_lbl = QLabel("Connect your Telegram Bot")
-        self._title_lbl.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
+        # ── title + subtitle ──────────────────────────────────────────
+        self._title_lbl = QLabel()
+        self._title_lbl.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
         self._title_lbl.setStyleSheet(f"color: {WHITE};")
         self._title_lbl.setWordWrap(True)
         inner.addWidget(self._title_lbl)
 
-        self._sub_lbl = QLabel(
-            "Create a bot via @BotFather, copy the token, and paste it below.")
+        self._sub_lbl = QLabel()
         self._sub_lbl.setStyleSheet(f"color: {TEXT}; font-size: 13px;")
         self._sub_lbl.setWordWrap(True)
         inner.addWidget(self._sub_lbl)
+
+        # ── detailed how-to (rich text, only on steps 1 and 2) ────────
+        self._howto_lbl = QLabel()
+        self._howto_lbl.setStyleSheet(
+            f"color: {WHITE}; background: rgba(0,212,255,5);"
+            f" border: 1px solid rgba(0,212,255,18);"
+            f" border-radius: 12px; padding: 14px 18px; font-size: 13px;")
+        self._howto_lbl.setWordWrap(True)
+        self._howto_lbl.setTextFormat(Qt.TextFormat.RichText)
+        self._howto_lbl.setOpenExternalLinks(True)
+        inner.addWidget(self._howto_lbl)
 
         # ── input stack ───────────────────────────────────────────────
         self._inputs = QStackedWidget()
@@ -621,7 +966,6 @@ class WizardPage(QWidget):
         # page 0 — token
         p0 = QWidget(); p0l = QVBoxLayout(p0); p0l.setContentsMargins(0,0,0,0)
         self._token_in = QLineEdit()
-        self._token_in.setPlaceholderText("1234567890:AAFxxxxxxxxxxxxxxxxx")
         self._token_in.setEchoMode(QLineEdit.EchoMode.Password)
         self._token_in.setMinimumHeight(46)
         p0l.addWidget(self._token_in)
@@ -629,17 +973,15 @@ class WizardPage(QWidget):
 
         # page 1 — channel + playlist
         p1 = QWidget(); p1l = QVBoxLayout(p1); p1l.setContentsMargins(0,0,0,0); p1l.setSpacing(10)
-        self._chan_in   = QLineEdit(); self._chan_in.setPlaceholderText("@your_channel")
-        self._chan_in.setMinimumHeight(46)
-        self._plist_in  = QLineEdit(); self._plist_in.setPlaceholderText("YouTube playlist URL or ID")
-        self._plist_in.setMinimumHeight(46)
+        self._chan_in  = QLineEdit();  self._chan_in.setMinimumHeight(46)
+        self._plist_in = QLineEdit();  self._plist_in.setMinimumHeight(46)
         p1l.addWidget(self._chan_in); p1l.addWidget(self._plist_in)
         self._inputs.addWidget(p1)
 
         # page 2 — review
         p2 = QWidget(); p2l = QVBoxLayout(p2); p2l.setContentsMargins(0,0,0,0)
         self._review_lbl = QLabel()
-        self._review_lbl.setStyleSheet(f"color: {TEXT}; font-size: 13px; line-height: 1.7;")
+        self._review_lbl.setStyleSheet(f"color: {TEXT}; font-size: 14px; line-height: 1.8;")
         self._review_lbl.setWordWrap(True)
         p2l.addWidget(self._review_lbl)
         self._inputs.addWidget(p2)
@@ -654,8 +996,8 @@ class WizardPage(QWidget):
 
         # ── buttons ───────────────────────────────────────────────────
         btn_row = QHBoxLayout()
-        self._back_btn = NeonButton("← Back",            style="glass")
-        self._next_btn = NeonButton("Verify & Continue →", style="cyan", glow=True)
+        self._back_btn = NeonButton("", style="glass")
+        self._next_btn = NeonButton("", style="cyan", glow=True)
         self._back_btn.setVisible(False)
         btn_row.addWidget(self._back_btn)
         btn_row.addStretch()
@@ -665,40 +1007,72 @@ class WizardPage(QWidget):
         self._back_btn.clicked.connect(self._back)
         self._next_btn.clicked.connect(self._next)
 
-        root.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
+        scroll.setWidget(card)
 
     # ── navigation ────────────────────────────────────────────────────
-    def _refresh(self) -> None:
-        _steps = [
-            ("STEP 1 OF 3", "Connect your Telegram Bot",
-             "Create a bot via @BotFather, copy the token, and paste it below."),
-            ("STEP 2 OF 3", "Add your first Channel",
-             "Enter the Telegram channel handle and the YouTube playlist URL to mirror."),
-            ("STEP 3 OF 3", "Review & Save",
-             "Looks good! Click Save to write the config and launch the dashboard."),
+    def _pill_style(self, state: str) -> str:
+        if state == "active":
+            return (f"color: #020202; background: {CYAN};"
+                    f" border: 1px solid {CYAN}; border-radius: 18px;"
+                    f" padding: 6px 14px; font-weight: 700; letter-spacing: 1px;")
+        if state == "done":
+            return (f"color: {CYAN}; background: rgba(0,212,255,10);"
+                    f" border: 1px solid rgba(0,212,255,40); border-radius: 18px;"
+                    f" padding: 6px 14px; font-weight: 700; letter-spacing: 1px;")
+        return (f"color: {MUTED}; background: rgba(255,255,255,4);"
+                f" border: 1px solid rgba(255,255,255,10); border-radius: 18px;"
+                f" padding: 6px 14px; font-weight: 600; letter-spacing: 1px;")
+
+    def retranslate(self) -> None:
+        """Reapply all visible strings — called on init and on language switch."""
+        labels = (tr("step.1"), tr("step.2"), tr("step.3"))
+        for i, pill in enumerate(self._pills):
+            pill.setText(f"  {i+1}  ·  {labels[i]}  ")
+            if i < self._step:
+                pill.setStyleSheet(self._pill_style("done"))
+            elif i == self._step:
+                pill.setStyleSheet(self._pill_style("active"))
+            else:
+                pill.setStyleSheet(self._pill_style("pending"))
+        for sep in self._pill_seps:
+            sep.setStyleSheet(f"color: {MUTED}; padding: 0 4px;")
+
+        keys = [
+            ("w.step1.title", "w.step1.sub", "w.step1.howto"),
+            ("w.step2.title", "w.step2.sub", "w.step2.howto"),
+            ("w.step3.title", "w.step3.sub", ""),
         ]
-        self._step_lbl.setText(_steps[self._step][0])
-        self._title_lbl.setText(_steps[self._step][1])
-        self._sub_lbl.setText(_steps[self._step][2])
+        title_k, sub_k, howto_k = keys[self._step]
+        self._title_lbl.setText(tr(title_k))
+        self._sub_lbl.setText(tr(sub_k))
+        if howto_k:
+            self._howto_lbl.setText(tr(howto_k))
+            self._howto_lbl.setVisible(True)
+        else:
+            self._howto_lbl.setVisible(False)
+
+        self._token_in.setPlaceholderText(tr("w.step1.input.placeholder"))
+        self._chan_in.setPlaceholderText(tr("w.step2.chan.placeholder"))
+        self._plist_in.setPlaceholderText(tr("w.step2.plist.placeholder"))
+
         self._inputs.setCurrentIndex(self._step)
         self._back_btn.setVisible(self._step > 0)
-        self._next_btn.setText(
-            "Save & Launch →" if self._step == 2 else "Continue →")
+        self._back_btn.setText(tr("w.btn.back"))
+        self._next_btn.setText(tr("w.btn.save") if self._step == 2 else tr("w.btn.next"))
         self._status.setText("")
-        for i, dot in enumerate(self._dots):
-            if i <= self._step:
-                dot.setText("●"); dot.setStyleSheet(f"color: {CYAN}")
-            else:
-                dot.setText("○"); dot.setStyleSheet(f"color: {MUTED}")
 
         if self._step == 2 and self._channels:
             ch = self._channels[0]
             token_preview = self._token[:12] + "…" if len(self._token) > 12 else self._token
             self._review_lbl.setText(
-                f"<b style='color:{WHITE}'>Bot token:</b> <code>{token_preview}</code><br>"
-                f"<b style='color:{WHITE}'>Channel:</b> {ch['channel']}<br>"
-                f"<b style='color:{WHITE}'>Playlist:</b> {ch['playlist'][:55]}…"
+                f"<b style='color:{WHITE}'>{tr('w.review.token')}:</b> <code>{token_preview}</code><br>"
+                f"<b style='color:{WHITE}'>{tr('w.review.channel')}:</b> {ch['channel']}<br>"
+                f"<b style='color:{WHITE}'>{tr('w.review.playlist')}:</b> {ch['playlist'][:55]}…"
             )
+
+    # Old name kept for the internal navigation callers
+    def _refresh(self) -> None:
+        self.retranslate()
 
     def _back(self) -> None:
         if self._step > 0:
@@ -709,7 +1083,7 @@ class WizardPage(QWidget):
         if self._step == 0:
             token = self._token_in.text().strip()
             if ":" not in token or len(token) < 20:
-                self._err("Please enter a valid bot token (from @BotFather).")
+                self._err(tr("w.err.token"))
                 return
             self._token = token
             self._step = 1
@@ -718,10 +1092,10 @@ class WizardPage(QWidget):
             ch = self._chan_in.text().strip()
             pl = self._plist_in.text().strip()
             if not ch.startswith("@"):
-                self._err("Channel must start with @ (e.g. @my_music_channel).")
+                self._err(tr("w.err.channel"))
                 return
             if not pl:
-                self._err("Please enter a YouTube playlist URL or ID.")
+                self._err(tr("w.err.playlist"))
                 return
             self._channels = [{"channel": ch, "playlist": pl}]
             self._step = 2
@@ -760,6 +1134,7 @@ class DashboardPage(QWidget):
         self._posted = 0
         self._failed = 0
         self._build()
+        self.retranslate()
 
     def _build(self) -> None:
         lay = QVBoxLayout(self)
@@ -773,12 +1148,12 @@ class DashboardPage(QWidget):
         hdr.addStretch()
 
         env_ok = ENV_PATH.exists()
-        env_lbl = QLabel("✓ Config loaded" if env_ok else "⚠ No config — run wizard")
-        env_lbl.setStyleSheet(
+        self._env_lbl = QLabel()
+        self._env_lbl.setStyleSheet(
             f"color: {SUCCESS}; font-size: 11px;" if env_ok
             else f"color: {AMBER}; font-size: 11px;"
         )
-        hdr.addWidget(env_lbl)
+        hdr.addWidget(self._env_lbl)
         lay.addLayout(hdr)
 
         # ── equalizer ─────────────────────────────────────────────────
@@ -787,11 +1162,11 @@ class DashboardPage(QWidget):
 
         # ── action buttons ────────────────────────────────────────────
         btn_row = QHBoxLayout(); btn_row.setSpacing(10)
-        self._btn_watch = NeonButton("▶  WATCH",    style="cyan",   glow=True)
-        self._btn_once  = NeonButton("⚡  RUN ONCE", style="purple", glow=True)
-        self._btn_check = NeonButton("🔍  CHECK",   style="glass")
-        self._btn_stop  = NeonButton("■  STOP",     style="danger")
-        self._btn_conf  = NeonButton("⚙  CONFIG",  style="glass")
+        self._btn_watch = NeonButton("", style="cyan",   glow=True)
+        self._btn_once  = NeonButton("", style="purple", glow=True)
+        self._btn_check = NeonButton("", style="glass")
+        self._btn_stop  = NeonButton("", style="danger")
+        self._btn_conf  = NeonButton("", style="glass")
         self._btn_stop.setVisible(False)
 
         for b in [self._btn_watch, self._btn_once, self._btn_check,
@@ -801,24 +1176,24 @@ class DashboardPage(QWidget):
 
         # ── stats cards ───────────────────────────────────────────────
         stats_row = QHBoxLayout(); stats_row.setSpacing(10)
-        self._n_posted  = self._stat_card(stats_row, "TRACKS POSTED", CYAN)
-        self._n_failed  = self._stat_card(stats_row, "FAILED",        MAGENTA)
-        self._n_session = self._stat_card(stats_row, "SESSION RUNS",  PURPLE)
+        self._n_posted,  self._lbl_posted  = self._stat_card(stats_row, CYAN)
+        self._n_failed,  self._lbl_failed  = self._stat_card(stats_row, MAGENTA)
+        self._n_session, self._lbl_session = self._stat_card(stats_row, PURPLE)
         self._session_runs = 0
         lay.addLayout(stats_row)
 
         # ── log ───────────────────────────────────────────────────────
         log_hdr = QHBoxLayout()
-        log_title = QLabel("LOG OUTPUT")
-        log_title.setStyleSheet(f"color: {MUTED}; font-size: 10px;"
+        self._log_title = QLabel()
+        self._log_title.setStyleSheet(f"color: {MUTED}; font-size: 10px;"
                                 " letter-spacing: 3px; font-weight: 700;")
-        self._btn_clear = QPushButton("clear")
+        self._btn_clear = QPushButton()
         self._btn_clear.setStyleSheet(
             f"color: {MUTED}; font-size: 11px; background: transparent;"
             " border: none; padding: 0; cursor: pointer;")
         self._btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_clear.clicked.connect(lambda: self._log.clear())
-        log_hdr.addWidget(log_title)
+        log_hdr.addWidget(self._log_title)
         log_hdr.addStretch()
         log_hdr.addWidget(self._btn_clear)
         lay.addLayout(log_hdr)
@@ -835,12 +1210,27 @@ class DashboardPage(QWidget):
         self._btn_stop.clicked.connect(self._stop)
         self._btn_conf.clicked.connect(self.go_config)
 
-        self._log_line(f"Space Music Hub GUI v2 — ready.")
+        self._log_line(tr("d.ready"))
         if not ENV_PATH.exists():
-            self._log_line("No .env found — please configure via ⚙ CONFIG first.")
+            self._log_line(tr("d.no_env"))
+
+    def retranslate(self) -> None:
+        env_ok = ENV_PATH.exists()
+        self._env_lbl.setText(tr("d.cfg.ok") if env_ok else tr("d.cfg.miss"))
+        self._btn_watch.setText(tr("d.btn.watch"))
+        self._btn_once.setText(tr("d.btn.once"))
+        self._btn_check.setText(tr("d.btn.check"))
+        self._btn_stop.setText(tr("d.btn.stop"))
+        self._btn_conf.setText(tr("d.btn.config"))
+        self._lbl_posted.setText(tr("d.stat.posted"))
+        self._lbl_failed.setText(tr("d.stat.failed"))
+        self._lbl_session.setText(tr("d.stat.runs"))
+        self._log_title.setText(tr("d.log.title"))
+        self._btn_clear.setText(tr("d.log.clear"))
+        self._status_badge.retranslate()
 
     # ── stat card helper ──────────────────────────────────────────────
-    def _stat_card(self, row: QHBoxLayout, label: str, color: str) -> QLabel:
+    def _stat_card(self, row: QHBoxLayout, color: str) -> tuple[QLabel, QLabel]:
         card = GlassCard()
         card.setMinimumHeight(68)
         cl = QVBoxLayout(card); cl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -848,12 +1238,12 @@ class DashboardPage(QWidget):
         num.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         num.setAlignment(Qt.AlignmentFlag.AlignCenter)
         num.setStyleSheet(f"color: {color};")
-        lbl = QLabel(label)
+        lbl = QLabel("")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setStyleSheet(f"color: {TEXT}; font-size: 10px; letter-spacing: 2px;")
         cl.addWidget(num); cl.addWidget(lbl)
         row.addWidget(card)
-        return num
+        return num, lbl
 
     # ── bot control ───────────────────────────────────────────────────
     def _start(self, mode: str) -> None:
@@ -872,12 +1262,12 @@ class DashboardPage(QWidget):
         for b in [self._btn_watch, self._btn_once, self._btn_check]:
             b.setEnabled(False)
         self._btn_stop.setVisible(True)
-        self._log_line(f"▶  Starting [{mode.upper()}] mode…")
+        self._log_line(tr("d.starting", mode.upper()))
 
     def _stop(self) -> None:
         if self._worker:
             self._worker.stop()
-        self._log_line("■  Stopped by user.")
+        self._log_line(tr("d.stopped"))
         self._on_done(True)
 
     def _on_done(self, ok: bool) -> None:
@@ -990,15 +1380,54 @@ class MainWindow(QMainWindow):
         lay.addWidget(title)
         lay.addStretch()
 
+        # Language switcher — three small pills RU / EN / LV
+        self._lang_btns: dict[str, QPushButton] = {}
+        for code, label in [("ru", "RU"), ("en", "EN"), ("lv", "LV")]:
+            b = QPushButton(label)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setCheckable(True)
+            b.setChecked(LANG == code)
+            b.setFixedSize(QSize(34, 26))
+            b.clicked.connect(lambda _, c=code: self._switch_lang(c))
+            self._lang_btns[code] = b
+            lay.addWidget(b)
+        self._restyle_lang_btns()
+
         badge = QLabel("v2.0 · GUI")
         badge.setStyleSheet(
             f"color: {CYAN}; background: rgba(0,212,255,10);"
             f" border: 1px solid rgba(0,212,255,28);"
             f" border-radius: 8px; padding: 4px 10px;"
-            f" font-size: 10px; font-weight: 700; letter-spacing: 1px;")
+            f" font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            f" margin-left: 12px;")
         lay.addWidget(badge)
 
         self._content_lay.addWidget(nav)
+
+    def _restyle_lang_btns(self) -> None:
+        for code, btn in self._lang_btns.items():
+            on = (LANG == code)
+            btn.setChecked(on)
+            btn.setStyleSheet(
+                f"QPushButton {{"
+                f"  background: {CYAN if on else 'rgba(255,255,255,5)'};"
+                f"  color: {('#020202' if on else WHITE)};"
+                f"  border: 1px solid {('rgba(0,212,255,80)' if on else 'rgba(255,255,255,14)')};"
+                f"  border-radius: 8px;"
+                f"  font-size: 10px; font-weight: 800; letter-spacing: 1px;"
+                f"}}"
+                f"QPushButton:hover {{ background: {('#30eaff' if on else 'rgba(255,255,255,12)')}; }}"
+            )
+
+    def _switch_lang(self, code: str) -> None:
+        if code == LANG:
+            return
+        set_lang(code)
+        self._restyle_lang_btns()
+        self._wizard.retranslate()
+        self._dashboard.retranslate()
+        if self._tray:
+            self._build_tray_menu()
 
     # ── page stack ────────────────────────────────────────────────────
     def _setup_pages(self) -> None:
@@ -1046,28 +1475,29 @@ class MainWindow(QMainWindow):
                QIcon(str(LOGO_PATH)) if LOGO_PATH.exists() else QIcon()
         self._tray = QSystemTrayIcon(icon, self)
         self._tray.setToolTip("Space Music Hub")
+        self._build_tray_menu()
+        self._tray.activated.connect(self._on_tray_activated)
+        self._tray.show()
 
+    def _build_tray_menu(self) -> None:
+        if not self._tray:
+            return
         menu = QMenu()
-        act_show  = QAction("Open Dashboard",    self)
-        act_watch = QAction("▶ Start Watching",  self)
-        act_stop  = QAction("■ Stop",            self)
-        act_quit  = QAction("Quit",              self)
-
+        act_show  = QAction(tr("tray.open"),  self)
+        act_watch = QAction(tr("tray.watch"), self)
+        act_stop  = QAction(tr("tray.stop"),  self)
+        act_quit  = QAction(tr("tray.quit"),  self)
         act_show.triggered.connect(self._show_from_tray)
         act_watch.triggered.connect(lambda: self._dashboard._start("watch"))
         act_stop.triggered.connect(self._dashboard._stop)
         act_quit.triggered.connect(self._quit_for_real)
-
         menu.addAction(act_show)
         menu.addSeparator()
         menu.addAction(act_watch)
         menu.addAction(act_stop)
         menu.addSeparator()
         menu.addAction(act_quit)
-
         self._tray.setContextMenu(menu)
-        self._tray.activated.connect(self._on_tray_activated)
-        self._tray.show()
 
     def _on_tray_activated(self, reason) -> None:
         # Double-click on the tray icon → toggle window
@@ -1109,7 +1539,7 @@ class MainWindow(QMainWindow):
         self.hide()
         self._tray.showMessage(
             "Space Music Hub",
-            "Still running in the tray — right-click the icon to control or quit.",
+            tr("tray.hidden"),
             QSystemTrayIcon.MessageIcon.Information,
             3000,
         )
