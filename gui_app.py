@@ -1056,14 +1056,20 @@ class BotWorker(QThread):
         else:
             cmd = [sys.executable, str(Path(__file__).resolve()), flag]
 
-        # On Windows: CREATE_NEW_PROCESS_GROUP is required so we can send
-        # CTRL_BREAK_EVENT to the bot subprocess from .stop() — otherwise
-        # the signal goes nowhere. CREATE_NO_WINDOW hides any console flash.
+        # On Windows:
+        #  * CREATE_NEW_PROCESS_GROUP lets .stop() reach the subprocess;
+        #  * CREATE_NO_WINDOW hides any console flash;
+        #  * BELOW_NORMAL_PRIORITY_CLASS is the key one — downloading and
+        #    ffmpeg-transcoding hundreds of tracks is CPU-heavy, and at
+        #    normal priority it made the whole PC lag. Children (ffmpeg,
+        #    spawned by yt-dlp) inherit this class, so the entire pipeline
+        #    runs in the background and yields to whatever the user is doing.
         creationflags = 0
         if sys.platform == "win32":
             creationflags = (
                 getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+                | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000)
             )
 
         # A stale lock from a previous abrupt kill would block this run
