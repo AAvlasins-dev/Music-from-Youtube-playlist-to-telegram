@@ -3,7 +3,7 @@
 ;  Compile with:  "C:\Program Files (x86)\Inno Setup 6\iscc.exe" SpaceMusicHub.iss
 ; =====================================================================
 #define MyAppName          "Space Music Hub"
-#define MyAppVersion       "1.9.1"
+#define MyAppVersion       "1.9.2"
 #define MyAppPublisher     "Andrejs Avlasins"
 #define MyAppURL           "https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram"
 #define MyAppExeName       "SpaceMusicHub.exe"
@@ -27,6 +27,11 @@ DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
+
+; Don't auto-pick the installer language from the Windows locale — default
+; to the first [Languages] entry (English). The user can still switch in
+; the language dialog. Without this, a Russian Windows pre-selects Russian.
+LanguageDetectionMethod=none
 
 ; UI polish
 WizardStyle=modern
