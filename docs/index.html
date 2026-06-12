@@ -23,8 +23,8 @@
   --r:20px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--white);font-family:'Space Grotesk',system-ui,sans-serif;overflow-x:hidden;line-height:1.6}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{background:var(--bg);color:var(--white);font-family:'Space Grotesk',system-ui,sans-serif;overflow-x:hidden;width:100%;max-width:100%;line-height:1.6}
 
 /* VIDEO BACKGROUND */
 #bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.5;pointer-events:none}
@@ -69,7 +69,7 @@ nav.scrolled{background:rgba(5,5,5,.85);backdrop-filter:blur(20px);-webkit-backd
 .btn-ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
 
 /* HERO EQ */
-.eq-hero{display:flex;align-items:flex-end;gap:4px;height:96px;filter:drop-shadow(0 0 12px rgba(0,212,255,.8)) drop-shadow(0 0 4px rgba(139,92,246,.6));margin-bottom:8px}
+.eq-hero{display:flex;align-items:flex-end;gap:4px;height:96px;max-width:100%;overflow:hidden;filter:drop-shadow(0 0 12px rgba(0,212,255,.8)) drop-shadow(0 0 4px rgba(139,92,246,.6));margin-bottom:8px}
 .eq-hero span{flex:0 0 10px;border-radius:3px 3px 0 0;background:linear-gradient(to top,var(--magenta),var(--purple),var(--cyan));transform-origin:bottom;animation:eqb 1.1s ease-in-out infinite;min-height:14px}
 @keyframes eqb{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1)}}
 
