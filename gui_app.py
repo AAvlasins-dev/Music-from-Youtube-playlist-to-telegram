@@ -1556,9 +1556,24 @@ class DashboardPage(QWidget):
         self.retranslate()
 
     def _build(self) -> None:
+        from PyQt6.QtWidgets import QScrollArea
+        # Whole dashboard scrolls if the window is too short — otherwise the
+        # QVBoxLayout can't fit everything and widgets overlap.
+        page = QVBoxLayout(self)
+        page.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
+        page.addWidget(scroll)
+
+        holder = QWidget()
+        scroll.setWidget(holder)
+
         # Cap the content to a centred column so nothing stretches edge to
         # edge on a wide / 4K window — content defines width, not the screen.
-        outer = QHBoxLayout(self)
+        outer = QHBoxLayout(holder)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addStretch()
         col = QWidget()
