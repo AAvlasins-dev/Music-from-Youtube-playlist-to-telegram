@@ -876,12 +876,12 @@ class NeonButton(QPushButton):
 class GlassCard(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        # Dark, mostly-opaque glass: the old near-transparent white fill
-        # (alpha 5) let the busy background bleed through and made white
-        # text hard to read. A solid dark panel reads cleanly and matches
-        # the log area.
+        # NB: target the card by #objectName, NOT by `QFrame`. QLabel is a
+        # subclass of QFrame, so a plain `QFrame { border }` rule leaks onto
+        # every child label and draws a second, inner frame ("рамка в рамке").
+        self.setObjectName("glassCard")
         self.setStyleSheet("""
-            QFrame {
+            QFrame#glassCard {
                 background: rgba(8,11,18,212);
                 border: 1px solid rgba(255,255,255,20);
                 border-radius: 14px;
@@ -895,6 +895,7 @@ class GlassCard(QFrame):
 class StatusBadge(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("statusBadge")  # so the pill border doesn't leak to child labels
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 7, 16, 7)
         lay.setSpacing(7)
@@ -919,7 +920,7 @@ class StatusBadge(QWidget):
         self._lbl.setStyleSheet(f"color: {MUTED}; letter-spacing: 2px;")
         self._state = "idle"
         self._lbl.setText(tr("badge.idle"))
-        self.setStyleSheet("QWidget { background: rgba(255,255,255,4);"
+        self.setStyleSheet("QWidget#statusBadge { background: rgba(255,255,255,4);"
                            " border: 1px solid rgba(255,255,255,10);"
                            " border-radius: 999px; }")
 
@@ -929,7 +930,7 @@ class StatusBadge(QWidget):
         self._lbl.setStyleSheet(f"color: {CYAN}; letter-spacing: 2px;")
         self._state = "running"
         self._lbl.setText(tr("badge.running"))
-        self.setStyleSheet("QWidget { background: rgba(0,212,255,8);"
+        self.setStyleSheet("QWidget#statusBadge { background: rgba(0,212,255,8);"
                            " border: 1px solid rgba(0,212,255,30);"
                            " border-radius: 999px; }")
 
@@ -939,7 +940,7 @@ class StatusBadge(QWidget):
         self._lbl.setStyleSheet(f"color: {ERROR}; letter-spacing: 2px;")
         self._state = "error"
         self._lbl.setText(tr("badge.error"))
-        self.setStyleSheet("QWidget { background: rgba(248,113,113,8);"
+        self.setStyleSheet("QWidget#statusBadge { background: rgba(248,113,113,8);"
                            " border: 1px solid rgba(248,113,113,30);"
                            " border-radius: 999px; }")
 
@@ -949,7 +950,7 @@ class StatusBadge(QWidget):
         self._lbl.setStyleSheet(f"color: {SUCCESS}; letter-spacing: 2px;")
         self._state = "done"
         self._lbl.setText(tr("badge.done"))
-        self.setStyleSheet("QWidget { background: rgba(52,211,153,8);"
+        self.setStyleSheet("QWidget#statusBadge { background: rgba(52,211,153,8);"
                            " border: 1px solid rgba(52,211,153,30);"
                            " border-radius: 999px; }")
 
@@ -1390,8 +1391,9 @@ class WizardPage(QWidget):
     # ── multi-pair management for step 2 ──────────────────────────────
     def _add_pair(self, channel: str = "", playlist: str = "") -> None:
         frame = QFrame()
+        frame.setObjectName("pairFrame")
         frame.setStyleSheet(
-            "QFrame { background: rgba(255,255,255,4);"
+            "QFrame#pairFrame { background: rgba(255,255,255,4);"
             " border: 1px solid rgba(255,255,255,10);"
             " border-radius: 12px; }")
         lay = QVBoxLayout(frame)
@@ -1867,11 +1869,11 @@ class DashboardPage(QWidget):
         num = QLabel("0")
         num.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         num.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        num.setStyleSheet(f"color: {color};")
+        num.setStyleSheet(f"color: {color}; border: none; background: transparent;")
         lbl = QLabel("")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet(f"color: {TEXT}; font-size: 10px;"
-                          " font-weight: 600; letter-spacing: 1px;")
+        lbl.setStyleSheet(f"color: {TEXT}; font-size: 10px; border: none;"
+                          " background: transparent; font-weight: 600; letter-spacing: 1px;")
         cl.addWidget(num); cl.addWidget(lbl)
         row.addWidget(card)
         return num, lbl
