@@ -146,22 +146,16 @@ LANG_SETTING_FILE = BASE_DIR / "lang.txt"
 
 
 def _detect_lang() -> str:
-    """Pick a UI language: explicit user choice → Windows locale → English."""
-    # 1. Explicit override (persisted from a previous switch)
+    """Pick a UI language: the user's saved choice, else English.
+
+    First launch always starts in English; the user can switch to RU/LV
+    with the nav pills, and that choice persists in lang.txt. We do NOT
+    auto-follow the Windows locale — English is the neutral default.
+    """
     if LANG_SETTING_FILE.exists():
         v = LANG_SETTING_FILE.read_text(encoding="utf-8", errors="ignore").strip().lower()
         if v in ("ru", "en", "lv"):
             return v
-    # 2. Inherit from Windows display language (QLocale is more reliable
-    #    than `locale.getlocale()` on Windows for the UI language).
-    try:
-        from PyQt6.QtCore import QLocale
-        code = QLocale.system().name().lower()  # e.g. "ru_ru"
-        for prefix in ("ru", "lv"):
-            if code.startswith(prefix):
-                return prefix
-    except Exception:
-        pass
     return "en"
 
 
