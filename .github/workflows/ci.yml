@@ -39,6 +39,11 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Smoke-import both modules (fail — don't skip — on a real import break)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -c "import gui_app, telegram_bot_music_youtube; print('imports OK')"
+
       - name: Run tests (pytest)
         env:
           QT_QPA_PLATFORM: offscreen

@@ -49,12 +49,15 @@ jobs:
           EOF
 
       - name: Run bot
+        # Channels use the documented numbered CHANNEL_N_* format (see
+        # .env.example). The secret *names* are kept as-is so existing repo
+        # secrets keep working — only the env-var keys the engine reads changed.
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          PLAYLIST_ANDREY: ${{ secrets.PLAYLIST_ANDREY }}
-          TELEGRAM_CHANNEL_ANDREY: ${{ secrets.TELEGRAM_CHANNEL_ANDREY }}
-          PLAYLIST_BAYBA: ${{ secrets.PLAYLIST_BAYBA }}
-          TELEGRAM_CHANNEL_BAYBA: ${{ secrets.TELEGRAM_CHANNEL_BAYBA }}
+          CHANNEL_1_PLAYLIST: ${{ secrets.PLAYLIST_ANDREY }}
+          CHANNEL_1_TELEGRAM: ${{ secrets.TELEGRAM_CHANNEL_ANDREY }}
+          CHANNEL_2_PLAYLIST: ${{ secrets.PLAYLIST_BAYBA }}
+          CHANNEL_2_TELEGRAM: ${{ secrets.TELEGRAM_CHANNEL_BAYBA }}
           ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
         run: python telegram_bot_music_youtube.py
 

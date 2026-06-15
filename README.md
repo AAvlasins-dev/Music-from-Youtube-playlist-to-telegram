@@ -119,7 +119,7 @@ GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube ident
 
 #### Option 0 — Ready-made Windows desktop app (no Python, no config files) ⭐
 
-Download **`SpaceMusicHub-Setup.exe`** from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page and run it. The installer puts the app in `%LOCALAPPDATA%\Programs`, creates shortcuts, and optionally registers launch-at-startup. On first launch a **graphical 3-step wizard** walks you through it:
+Download **`SpaceMusicHub-Setup-v2.0.0.exe`** from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page and run it. The installer puts the app in `%LOCALAPPDATA%\Programs`, creates shortcuts, and optionally registers launch-at-startup. On first launch a **graphical 3-step wizard** walks you through it:
 
 ```text
 [1] Bot token   ->  create a bot via @BotFather, paste the token   (built-in instructions)
@@ -228,7 +228,7 @@ space-music-hub/
 ├── telegram_bot_music_youtube.py  # The engine — playlist → MP3 → Telegram
 ├── SpaceMusicHubGUI.spec          # PyInstaller spec (bundles the GUI + engine + assets)
 ├── installer/
-│   ├── SpaceMusicHub.iss          # Inno Setup script → SpaceMusicHub-Setup.exe
+│   ├── SpaceMusicHub.iss          # Inno Setup script → SpaceMusicHub-Setup-vX.Y.Z.exe
 │   └── Latvian.isl                # Latvian translation for the installer UI
 ├── docs/                          # GitHub Pages presentation site + logo/bg assets
 ├── INSTALL.md                     # Detailed Windows install guide (RU)
@@ -243,7 +243,7 @@ space-music-hub/
 │   └── ci.yml                     # Ruff lint + pytest on every push & PR
 └── tests/
     ├── test_bot.py                # Engine unit tests
-    └── test_gui.py                # GUI-layer unit tests (94 tests total)
+    └── test_gui.py                # GUI-layer unit tests (97 tests total)
 ```
 
 ### 🧪 Testing
@@ -251,10 +251,10 @@ space-music-hub/
 ```bash
 pip install -r requirements-dev.txt
 ruff check .                       # lint
-pytest -q                          # 94 unit tests
+pytest -q                          # 97 unit tests
 ```
 
-**94 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on Linux **and** Windows for every push & PR, plus `ruff` linting:
+**97 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on Linux **and** Windows for every push & PR, plus `ruff` linting:
 
 | Area | What's covered |
 |---|---|
@@ -350,7 +350,7 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 #### Вариант 0 — Готовое приложение для Windows (без Python и конфигов) ⭐
 
-Скачай **`SpaceMusicHub-Setup.exe`** со страницы [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) и запусти. Установщик ставит приложение, создаёт ярлыки и по желанию регистрирует автозапуск. При первом запуске **графический мастер из 3 шагов** проведёт настройку, дальше всем управляет дашборд (Watch / Run once / Check / Config) и планировщик в трее — переживает перезагрузки, постит новые треки сам.
+Скачай **`SpaceMusicHub-Setup-v2.0.0.exe`** со страницы [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) и запусти. Установщик ставит приложение, создаёт ярлыки и по желанию регистрирует автозапуск. При первом запуске **графический мастер из 3 шагов** проведёт настройку, дальше всем управляет дашборд (Watch / Run once / Check / Config) и планировщик в трее — переживает перезагрузки, постит новые треки сам.
 
 📖 **Подробный гайд:** [INSTALL.md](INSTALL.md)
 
@@ -478,7 +478,7 @@ GitHub Actions izmanto **Microsoft Azure** serverus, kuru IP adreses YouTube atp
 
 ### 🚀 Ātrā palaišana
 
-**Variants 0 — gatava Windows lietotne (bez Python) ⭐:** lejupielādē **`SpaceMusicHub-Setup.exe`** no [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) un palaid — grafiskais 3 soļu vednis visu iestata, pēc tam viss notiek panelī un sistēmas teknē. Sīkāk: [INSTALL.md](INSTALL.md).
+**Variants 0 — gatava Windows lietotne (bez Python) ⭐:** lejupielādē **`SpaceMusicHub-Setup-v2.0.0.exe`** no [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) un palaid — grafiskais 3 soļu vednis visu iestata, pēc tam viss notiek panelī un sistēmas teknē. Sīkāk: [INSTALL.md](INSTALL.md).
 
 **Izstrādātājiem (Python):**
 

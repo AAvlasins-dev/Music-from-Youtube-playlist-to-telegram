@@ -16,7 +16,8 @@ shipped v2.0.0 installer).
 - CI now also runs on **windows-latest** (the real target OS), in addition
   to Linux, on every push and PR.
 - Tests for the GUI **self-dispatcher** (`--bot-*` → engine entry points)
-  and for the token-mask filter's lazy `%`-args path. Suite: **86 → 94**.
+  the token-mask filter's lazy `%`-args path, and the single-instance lock.
+  Suite: **86 → 97**.
 
 ### Changed
 - Engine hardened: `DOWNLOAD_DIR` cleanup no longer blanket-wipes the folder

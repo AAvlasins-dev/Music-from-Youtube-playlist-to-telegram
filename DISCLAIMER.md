@@ -31,7 +31,7 @@ demonstrētu programmatūras izstrādes prasmes (tīrs kods, testi, CI/CD, iepak
 - **Jūs esat atbildīgs** par to, kā to izmantojat. Satura lejupielāde no YouTube
   var pārkāpt YouTube lietošanas noteikumus, un ar autortiesībām aizsargātas mūzikas
   izplatīšana publiskos kanālos var pārkāpt autortiesību likumu jūsu valstī.
-- Izmantojiet to tikai ar saturu, kuru jums ir tiesības lietot — saviem augšupielādēm,
+- Izmantojiet to tikai ar saturu, kuru jums ir tiesības lietot — savām augšupielādēm,
   publiska īpašuma vai Creative Commons / royalty-free mūziku, vai privātos
   (ne-publiskos) kanālos.
 - Autors nodrošina šo programmatūru **"kā ir", bez jebkādas garantijas** un

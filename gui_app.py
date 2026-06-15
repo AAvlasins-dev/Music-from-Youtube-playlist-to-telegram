@@ -1386,13 +1386,15 @@ class WizardPage(QWidget):
         self._cancel_btn.setVisible(has_config)
 
         if self._step == 2 and self._channels:
+            def _esc(s: str) -> str:  # local var below is named `html`, so no html.escape
+                return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             token_preview = self._token[:12] + "…" if len(self._token) > 12 else self._token
-            html = [f"<b style='color:{WHITE}'>{tr('w.review.token')}:</b> <code>{token_preview}</code>"]
+            html = [f"<b style='color:{WHITE}'>{tr('w.review.token')}:</b> <code>{_esc(token_preview)}</code>"]
             for i, ch in enumerate(self._channels, start=1):
                 html.append(
                     f"<br><br><b style='color:{CYAN}'>{tr('w.step2.pair', i)}</b><br>"
-                    f"<b style='color:{WHITE}'>{tr('w.review.channel')}:</b> {ch['channel']}<br>"
-                    f"<b style='color:{WHITE}'>{tr('w.review.playlist')}:</b> <code>{ch['playlist']}</code>"
+                    f"<b style='color:{WHITE}'>{tr('w.review.channel')}:</b> {_esc(ch['channel'])}<br>"
+                    f"<b style='color:{WHITE}'>{tr('w.review.playlist')}:</b> <code>{_esc(ch['playlist'])}</code>"
                 )
             self._review_lbl.setText("".join(html))
 
@@ -2065,6 +2067,8 @@ class DashboardPage(QWidget):
             if friendly is None:
                 return  # hidden in simple mode
             colour, body = friendly
+            # Escape like the expert path — body may embed a YouTube title with & < >
+            body = body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             self._log.append(f'<span style="color:{colour}">{body}</span>')
         else:
             ts = datetime.datetime.now().strftime("%H:%M:%S")

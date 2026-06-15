@@ -687,3 +687,33 @@ class TestTokenMaskFilter:
 
     def test_leaves_plain_text_untouched(self):
         assert self._mask("Posted track 5 of 100") == "Posted track 5 of 100"
+
+
+# --------------------------------------------------------------------------- #
+# Single-instance lock — atomic acquire + stale-lock reclaim
+# --------------------------------------------------------------------------- #
+class TestSingleInstanceLock:
+    def test_acquire_then_blocks_a_second_live_instance(self, tmp_path):
+        lock = str(tmp_path / "bot.lock")
+        assert bot._acquire_lock(lock) is True
+        # The lock now holds *this* (alive) process's PID → a second acquire refused
+        assert bot._acquire_lock(lock) is False
+        os.remove(lock)
+
+    def test_reclaims_a_stale_lock(self, tmp_path, monkeypatch):
+        lock = str(tmp_path / "bot.lock")
+        with open(lock, "w", encoding="utf-8") as f:
+            f.write("999999")                      # a crashed run's dead PID
+        monkeypatch.setattr(bot, "_pid_alive", lambda pid: False)
+        assert bot._acquire_lock(lock) is True     # stale lock reclaimed
+        with open(lock, encoding="utf-8") as f:
+            assert f.read().strip() == str(os.getpid())
+        os.remove(lock)
+
+    def test_respects_a_live_owner(self, tmp_path, monkeypatch):
+        lock = str(tmp_path / "bot.lock")
+        with open(lock, "w", encoding="utf-8") as f:
+            f.write("4242")
+        monkeypatch.setattr(bot, "_pid_alive", lambda pid: True)
+        assert bot._acquire_lock(lock) is False    # owner alive → refuse
+        os.remove(lock)
