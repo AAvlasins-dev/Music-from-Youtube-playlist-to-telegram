@@ -225,25 +225,26 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 ```
 space-music-hub/
 ├── gui_app.py                      # PyQt6 desktop app (wizard, dashboard, tray, scheduler)
-├── telegram_bot_music_youtube.py  # The engine — playlist → MP3 → Telegram
-├── SpaceMusicHubGUI.spec          # PyInstaller spec (bundles the GUI + engine + assets)
+├── telegram_bot_music_youtube.py   # the engine: playlist → MP3 → Telegram
+├── SpaceMusicHubGUI.spec           # PyInstaller build spec (GUI + engine + assets)
 ├── installer/
-│   ├── SpaceMusicHub.iss          # Inno Setup script → SpaceMusicHub-Setup-vX.Y.Z.exe
-│   └── Latvian.isl                # Latvian translation for the installer UI
-├── docs/                          # GitHub Pages presentation site + logo/bg assets
-├── INSTALL.md                     # Detailed Windows install guide (RU)
-├── requirements.txt               # Runtime dependencies (incl. PyQt6)
-├── requirements-dev.txt           # + pytest, ruff
-├── Dockerfile / docker-compose.yml # Headless engine deployment
-├── .env.example                   # Environment-variable template
-├── pyproject.toml                 # Ruff + pytest config
-├── CHANGELOG.md                   # Version history
+│   ├── SpaceMusicHub.iss           # Inno Setup script → the Windows installer
+│   └── Latvian.isl                 # Latvian translation for the installer UI
+├── docs/                           # GitHub Pages site + logo / bg assets
+├── INSTALL.md                      # Windows install guide (RU)
+├── requirements.txt                # runtime deps (incl. PyQt6)
+├── requirements-dev.txt            # + pytest, ruff, pyinstaller
+├── Dockerfile, docker-compose.yml  # headless-engine deployment
+├── .env.example                    # environment-variable template
+├── pyproject.toml                  # ruff + pytest config
+├── LICENSE                         # MIT
+├── CHANGELOG.md                    # version history
 ├── .github/workflows/
-│   ├── bot.yml                    # Headless engine runner (manual dispatch)
-│   └── ci.yml                     # Ruff lint + pytest on every push & PR
+│   ├── bot.yml                     # headless engine runner (manual dispatch)
+│   └── ci.yml                      # ruff + pytest on Linux & Windows, push & PR
 └── tests/
-    ├── test_bot.py                # Engine unit tests
-    └── test_gui.py                # GUI-layer unit tests (97 tests total)
+    ├── test_bot.py                 # engine unit tests
+    └── test_gui.py                 # GUI-layer unit tests (97 total)
 ```
 
 ### 🧪 Testing
@@ -407,6 +408,8 @@ python telegram_bot_music_youtube.py
 | `RETRY_DELAY` | ➖ | Базовая задержка между попытками в секундах (по умолчанию: `5`) |
 | `POST_DELAY` | ➖ | Задержка между публикациями в секундах (по умолчанию: `2`) |
 | `LOG_LEVEL` | ➖ | `DEBUG`, `INFO`, `WARNING`, `ERROR` (по умолчанию: `INFO`) |
+| `LOG_FILE` | ➖ | Путь к файлу лога (по умолчанию: `bot.log`) |
+| `DOWNLOAD_DIR` | ➖ | Временная папка для MP3. На Windows — только ASCII-путь, напр. `C:\Temp\music_bot` |
 
 > **Секреты GitHub Actions:** добавь обязательные переменные в **Settings → Secrets and variables → Actions**. Опционально: `YOUTUBE_COOKIES_B64` и `ADMIN_CHAT_ID`.
 
@@ -501,6 +504,20 @@ python telegram_bot_music_youtube.py
 | `CHANNEL_1_NAME` | ➖ | Etiķete stāvokļa failu nosaukumiem / žurnāliem |
 | `CHANNEL_2_*`, `CHANNEL_3_*`, … | ➖ | Pievieno tik `kanāls ↔ saraksts` pāru, cik vēlies |
 | `ADMIN_CHAT_ID` | ➖ | Tavs Telegram chat ID kopsavilkuma paziņojumiem |
+
+### 🏗 Arhitektūra
+
+Iebūvētais `.exe` ir GUI. Nospiežot Watch / Run once / Check, tas **pārstartē sevi** ar karogu `--bot-watch` / `--bot-once` / `--bot-check`; dispečers `gui_app.py` sākumā palaiž iebūvēto dzinēju saskarnes vietā un straumē izvadi atpakaļ uz paneļa žurnālu. Viens binārs, divas lomas — dzinēja avārija nenogāž lietotni.
+
+### 🧪 Testēšana
+
+**97 vienības testi** (pytest), zaļi [CI](.github/workflows/ci.yml) uz Linux un Windows katram push un PR, plus `ruff` linteris.
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+QT_QPA_PLATFORM=offscreen pytest -q       # 97 testi
+```
 
 ### 📝 Licence
 

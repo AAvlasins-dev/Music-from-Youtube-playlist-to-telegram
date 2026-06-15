@@ -1,0 +1,28 @@
+# The Docker image is the headless engine only (telegram_bot_music_youtube.py).
+# Keep the build context tiny — exclude the GUI, site, tests, tooling and secrets.
+.git/
+.github/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.spec
+docs/
+installer/
+tests/
+gui_app.py
+*.md
+.env
+lang.txt
+*.log
+bot.lock
+data/
+downloads/
+.tools/
+.claude/
+card_final.png

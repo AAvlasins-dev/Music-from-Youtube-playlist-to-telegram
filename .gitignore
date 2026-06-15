@@ -15,8 +15,9 @@ dist/
 *.spec
 !SpaceMusicHubGUI.spec
 
-# Docker volume data directory
-data/
+# Docker volume data directory (keep the dir, ignore its runtime contents)
+data/*
+!data/.gitkeep
 
 # Downloaded audio files
 downloads/

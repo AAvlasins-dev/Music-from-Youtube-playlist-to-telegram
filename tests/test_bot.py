@@ -459,6 +459,7 @@ class _FakeBot:
         self.sent_audios: list[dict] = []
         self.pinned: list[int] = []
         self.unpinned: list[int] = []
+        self.shut_down = False
 
     async def send_audio(self, chat_id, audio, title, caption, parse_mode):
         mid = 1000 + len(self.sent_audios)
@@ -470,6 +471,9 @@ class _FakeBot:
 
     async def unpin_chat_message(self, chat_id, message_id):
         self.unpinned.append(message_id)
+
+    async def shutdown(self):
+        self.shut_down = True
 
 
 def _setup_post(tmp_path, monkeypatch, videos, *, fail_ids=()):
@@ -513,6 +517,7 @@ class TestPostNewVideos:
         assert result.failed == 0
         assert result.total_new == 2
         assert [s["title"] for s in fake_bot.sent_audios] == ["Track A", "Track B"]
+        assert fake_bot.shut_down is True  # owns its Bot → closes the httpx client
 
     def test_skips_already_sent(self, tmp_path, monkeypatch):
         videos = [{"id": "a", "title": "Track A"}, {"id": "b", "title": "Track B"}]

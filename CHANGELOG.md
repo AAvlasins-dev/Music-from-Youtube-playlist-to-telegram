@@ -25,17 +25,25 @@ shipped v2.0.0 installer).
   `load_json` survives a corrupt state file; the single-instance lock is now
   atomic (`O_CREAT|O_EXCL`) and reclaims a stale lock whose owner PID is gone;
   colliding channel names get separate state files.
+- `watch()` / `main()` now reuse a single Bot and close it on exit, so a
+  long-running watch session no longer leaks an httpx client every cycle.
+- GUI escapes HTML in the Simple-mode log and the wizard review screen — a
+  YouTube title containing `& < >` no longer corrupts the rendered text.
 - GUI writes the bare channel handle (no `@`) to `.env`, matching the engine.
 - Docs realigned with the desktop app: `INSTALL.md`/`CONTRIBUTING.md` rewritten,
   RU/LV README brought to parity with EN, config tables switched to the
-  `CHANNEL_N_*` format, `build_exe.bat` now builds the GUI via the spec.
-- `bot.yml` is **manual-dispatch only** (the daily schedule with real cookies
-  on a public repo was removed).
-- `PyQt6` declared in `pyproject.toml` dependencies.
+  `CHANNEL_N_*` format, `build_exe.bat` now builds the GUI via the spec, and
+  the Project-Structure tree is re-aligned.
+- `bot.yml` is **manual-dispatch only** and uses the `CHANNEL_N_*` env keys
+  (the daily schedule with real cookies on a public repo, and the personal
+  `*_ANDREY`/`*_BAYBA` keys, were removed).
+- `PyQt6` declared in `pyproject.toml` dependencies; added `.dockerignore`.
 
 ### Removed
 - 8.6 MB autoplaying `bg.mp4` and an orphan 7.1 MB `song.mp3` from the site
   (the background is now the 156 KB `bg.jpg` that was shipped but never wired).
+- Stale GitHub releases (v1.5.0, v1.6.0, v1.7.0-gui) — only **v2.0.0** remains
+  (the `v1-classic` branch is kept for the project's history).
 
 ---
 

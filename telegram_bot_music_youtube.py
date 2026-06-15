@@ -638,7 +638,17 @@ async def _notify_admin(bot: Bot, text: str) -> None:
 # ---------------------------------------------------------------------------
 # Core logic
 # ---------------------------------------------------------------------------
-async def post_new_videos(channel: ChannelConfig) -> RunResult:
+async def _shutdown_bot(tg_bot: Bot) -> None:
+    """Close a Bot's underlying httpx client; never raise."""
+    try:
+        await tg_bot.shutdown()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def post_new_videos(
+    channel: ChannelConfig, tg_bot: Bot | None = None
+) -> RunResult:
     """Check *channel.playlist_id* for new videos and send them to Telegram.
 
     Downloads each new video as MP3, posts it, updates the pin, and persists
@@ -667,7 +677,11 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
         return RunResult(channel=channel.name, posted=0, failed=0, total_new=0)
 
     logger.info("[%s] %d new video(s) to post.", channel.name, len(new_videos))
-    tg_bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    # Reuse the caller's Bot when given (watch() shares one across cycles so it
+    # doesn't leak an httpx client every cycle); otherwise own one and close it.
+    own_bot = tg_bot is None
+    if own_bot:
+        tg_bot = Bot(token=TELEGRAM_BOT_TOKEN)
     posted = 0
     failed = 0
 
@@ -780,6 +794,8 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
 
     save_json(channel.sent_videos_file, sent_videos)
     save_json(channel.pinned_msgs_file, pinned_msgs)
+    if own_bot:
+        await _shutdown_bot(tg_bot)
     result = RunResult(
         channel=channel.name,
         posted=posted,
@@ -799,15 +815,18 @@ async def main() -> None:
     tg_bot = Bot(token=TELEGRAM_BOT_TOKEN)
     results: list[RunResult] = []
 
-    for channel in CHANNELS:
-        result = await post_new_videos(channel)
-        results.append(result)
+    try:
+        for channel in CHANNELS:
+            result = await post_new_videos(channel, tg_bot)
+            results.append(result)
 
-    if ADMIN_CHAT_ID:
-        summary = "<b>🤖 Space Music Hub — run complete</b>\n\n" + "\n".join(
-            str(r) for r in results
-        )
-        await _notify_admin(tg_bot, summary)
+        if ADMIN_CHAT_ID:
+            summary = "<b>🤖 Space Music Hub — run complete</b>\n\n" + "\n".join(
+                str(r) for r in results
+            )
+            await _notify_admin(tg_bot, summary)
+    finally:
+        await _shutdown_bot(tg_bot)
 
 
 async def check() -> None:
@@ -1236,17 +1255,21 @@ async def watch() -> None:
     print("Чтобы остановить — закрой окно или нажми Ctrl+C.\n")
     logger.info("Watch mode started (interval: %s).", human)
 
+    tg_bot = Bot(token=TELEGRAM_BOT_TOKEN)  # one client for the whole session
     cycle = 0
-    while True:
-        cycle += 1
-        posted = 0
-        for channel in CHANNELS:
-            result = await post_new_videos(channel)
-            posted += result.posted
-        logger.info(
-            "Cycle %d done — posted %d. Next check %s.", cycle, posted, human
-        )
-        await asyncio.sleep(interval)
+    try:
+        while True:
+            cycle += 1
+            posted = 0
+            for channel in CHANNELS:
+                result = await post_new_videos(channel, tg_bot)
+                posted += result.posted
+            logger.info(
+                "Cycle %d done — posted %d. Next check %s.", cycle, posted, human
+            )
+            await asyncio.sleep(interval)
+    finally:
+        await _shutdown_bot(tg_bot)
 
 
 def _do_watch() -> int:
