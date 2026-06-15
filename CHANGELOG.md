@@ -6,6 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.0.0] — 2026-06-15 — Desktop App 🖥️
+
+The project graduates from a console tool to a **standalone PyQt6 desktop
+application** for Windows. The proven `v1-classic` engine is unchanged at its core
+and now bundled inside the app, driven by a neon GUI. Shipped as a one-file
+Inno Setup installer — no Python or config files on the target PC.
+
+### Added — Desktop GUI (`gui_app.py`)
+- **Graphical 3-step setup wizard** — paste bot token → add channel + playlist →
+  review & save. Built-in step-by-step instructions (create a bot via @BotFather,
+  make the channel public, add the bot as admin). A **"Test channel"** button posts
+  and deletes a live probe message to prove the bot can actually post before saving.
+- **Live dashboard** — Watch / Run once / Check / Stop, a **progress bar**
+  ("track 5 of 55"), live counters (posted / failed / runs per run), an inline
+  "add another channel + playlist" panel, and a **Simple / Expert log toggle**
+  (friendly one-liners vs. the full technical log).
+- **Check scheduler** — choose the re-check interval (hourly / 2-hourly / daily /
+  weekly) and a one-click **launch-at-Windows-startup** toggle (HKCU Run key).
+- **System-tray background mode** — closing the window hides to the tray; the bot
+  keeps running and can auto-start hidden on boot (`--tray`).
+- **Trilingual UI** — English / Русский / Latviešu, switchable live, persisted to
+  `lang.txt`; first launch defaults to English.
+- **Themed system-tray menu** that follows the in-app language.
+- **One-file Windows installer** (Inno Setup) — per-user install, Desktop +
+  Start-Menu shortcuts with a round logo, clean uninstall that wipes runtime state,
+  and a kill-running-instance guard so updates/uninstalls never fail on locked files.
+  Installer UI in EN/RU/LV, defaulting to English.
+- Presentation website redesigned (Cyber-Neon 2026) and served via GitHub Pages.
+
+### Added — Engine
+- **Download pipeline** — the next track downloads + transcodes while the current
+  one uploads, ~30–40 % faster on large batches at no extra CPU cost.
+- Fixed-at-192 kbps MP3 quality (`AUDIO_BITRATE`, validated).
+- Human-readable watch-interval labels in logs ("раз в день" vs "каждые 1440 мин").
+
+### Fixed / Hardened
+- **Token never leaks** — `httpx`/`telegram` request URLs containing the bot token
+  are silenced and masked (`bot…:***`) in both `bot.log` and the GUI log.
+- **Captions HTML-escaped** — titles with `&`, `<`, `>` no longer break Telegram's
+  HTML parser and silently drop tracks.
+- **Oversize tracks (>50 MB)** are skipped and recorded, not retried forever.
+- Runs at **below-normal process priority** so the PC stays responsive.
+- Wizard saves the bare playlist ID (not the full URL), fixing an HTTP 400.
+
+### Engineering
+- **Architecture:** one binary, two roles — the GUI re-launches its own `.exe`
+  with `--bot-watch/-once/-check` flags; a dispatch guard runs the engine and
+  streams stdout back to the dashboard. A bot crash can't take the UI down.
+- **Tests:** suite grown from 55 → **86** (added `tests/test_gui.py`); CI installs
+  Qt libs and runs headless with `QT_QPA_PLATFORM=offscreen`; `ruff` clean.
+
+---
+
 ## [1.6.0] — 2026-06-09
 
 ### Added
