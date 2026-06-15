@@ -33,6 +33,12 @@ extend-exclude = ["*.local.bak.py", "downloads", "data"]
 select = ["E", "F", "W", "I", "UP", "B"]
 ignore = ["BLE001"]   # catching broad Exception is intentional in retry logic
 
+[tool.ruff.lint.per-file-ignores]
+# The desktop GUI uses long inline Qt stylesheet strings and compact,
+# one-line widget-construction idioms. Correctness rules (F, B, imports)
+# still apply; only these layout-style rules are relaxed for it.
+"gui_app.py" = ["E501", "E701", "E702"]
+
 # ---------------------------------------------------------------------------
 # Pytest
 # ---------------------------------------------------------------------------

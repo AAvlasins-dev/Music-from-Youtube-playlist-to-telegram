@@ -581,3 +581,93 @@ class TestPostNewVideos:
 
         # the temp mp3 must be removed after a successful send
         assert not os.path.exists(str(tmp_path / "a.mp3"))
+
+    def test_pipeline_preserves_order_with_many(self, tmp_path, monkeypatch):
+        # The 1-deep download pipeline must still post strictly in order.
+        videos = [{"id": f"v{i}", "title": f"T{i}"} for i in range(8)]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos)
+        channel = _make_channel(tmp_path)
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.posted == 8
+        assert [s["title"] for s in fake_bot.sent_audios] == [f"T{i}" for i in range(8)]
+
+    def test_oversize_track_skipped_not_failed(self, tmp_path, monkeypatch):
+        # A file above the Telegram limit is recorded as handled (skipped),
+        # not counted as a failure and not retried forever.
+        videos = [{"id": "big", "title": "Huge Mix"}, {"id": "ok", "title": "Normal"}]
+        fake_bot = _setup_post(tmp_path, monkeypatch, videos)
+        monkeypatch.setattr(bot, "_TG_AUDIO_LIMIT_BYTES", 50)  # everything "big" is over
+
+        def sized_download(video_id):
+            path = os.path.join(str(tmp_path), f"{video_id}.mp3")
+            with open(path, "wb") as f:
+                f.write(b"\x00" * (100 if video_id == "big" else 10))
+            return path
+
+        monkeypatch.setattr(bot, "_download_audio", sized_download)
+        channel = _make_channel(tmp_path)
+
+        result = asyncio.run(bot.post_new_videos(channel))
+
+        assert result.failed == 0                       # skip is not a failure
+        assert [s["title"] for s in fake_bot.sent_audios] == ["Normal"]
+        saved = bot.load_json(channel.sent_videos_file)
+        assert saved["big"]["skipped"] == "too_large"   # marked so it won't retry
+
+
+# --------------------------------------------------------------------------- #
+# Caption HTML-escaping (titles with & < > must not break parse_mode=HTML)
+# --------------------------------------------------------------------------- #
+class TestCaptionEscaping:
+    def test_special_chars_escaped(self, tmp_path, monkeypatch):
+        fake_bot = _FakeBot()
+        captions: list[str] = []
+
+        async def capture(chat_id, audio, title, caption, parse_mode):
+            captions.append(caption)
+            return SimpleNamespace(message_id=1)
+
+        fake_bot.send_audio = capture
+        f = tmp_path / "a.mp3"
+        f.write_bytes(b"x")
+        asyncio.run(bot._send_audio(fake_bot, "@c", str(f),
+                                    "Florence & The Machine <Live>", "vid"))
+        assert "&amp;" in captions[0]
+        assert "&lt;Live&gt;" in captions[0]
+        assert "<b>Florence & The Machine" not in captions[0]  # raw & is gone
+
+
+# --------------------------------------------------------------------------- #
+# Human-readable interval formatting (watch mode logs)
+# --------------------------------------------------------------------------- #
+class TestFormatInterval:
+    @pytest.mark.parametrize("seconds,expected", [
+        (3600, "каждый час"),
+        (7200, "каждые 2 ч."),
+        (86400, "раз в день"),
+        (604800, "раз в неделю"),
+        (900, "каждые 15 мин"),
+    ])
+    def test_labels(self, seconds, expected):
+        assert bot._format_interval(seconds) == expected
+
+
+# --------------------------------------------------------------------------- #
+# Token-masking log filter (the bot token must never reach logs/UI)
+# --------------------------------------------------------------------------- #
+class TestTokenMaskFilter:
+    def _mask(self, msg):
+        import logging
+        rec = logging.LogRecord("x", logging.INFO, "", 0, msg, None, None)
+        bot._mask_filter.filter(rec)
+        return rec.getMessage()
+
+    def test_masks_token_in_url(self):
+        out = self._mask("POST https://api.telegram.org/bot8280083661:AAE7tJTovxEO/getMe")
+        assert "AAE7tJTovxEO" not in out
+        assert "bot8280083661:***" in out
+
+    def test_leaves_plain_text_untouched(self):
+        assert self._mask("Posted track 5 of 100") == "Posted track 5 of 100"

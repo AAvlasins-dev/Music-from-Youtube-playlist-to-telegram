@@ -12,26 +12,49 @@ from __future__ import annotations
 
 import datetime
 import os
+import re as _re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from PyQt6.QtCore import (
-    QSize, QTimer, QThread,
-    Qt, pyqtSignal,
+    QSize,
+    Qt,
+    QThread,
+    QTimer,
+    pyqtSignal,
 )
 from PyQt6.QtGui import (
-    QBrush, QColor, QFont, QIcon, QLinearGradient, QPixmap,
-    QPainter, QPainterPath, QPen,
+    QAction,
+    QBrush,
+    QColor,
+    QFont,
+    QIcon,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPixmap,
 )
 from PyQt6.QtWidgets import (
-    QApplication, QCheckBox, QFrame, QGraphicsDropShadowEffect,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
-    QProgressBar, QPushButton, QScrollBar, QSizePolicy, QStackedWidget,
-    QSystemTrayIcon, QTextEdit, QVBoxLayout, QWidget,
+    QApplication,
+    QCheckBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QProgressBar,
+    QPushButton,
+    QScrollBar,
+    QSizePolicy,
+    QStackedWidget,
+    QSystemTrayIcon,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtGui import QAction
 
 # ── Paths ─────────────────────────────────────────────────────────────
 if getattr(sys, "frozen", False):
@@ -573,7 +596,6 @@ def set_lang(code: str) -> None:
 # ══════════════════════════════════════════════════════════════════════
 #  Input normalisers — must match what the bot's setup_wizard does
 # ══════════════════════════════════════════════════════════════════════
-import re as _re
 
 
 def extract_playlist_id(text: str) -> str:
@@ -1545,7 +1567,7 @@ class DashboardPage(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._worker: Optional[BotWorker] = None
+        self._worker: BotWorker | None = None
         self._posted = 0
         self._failed = 0
         self._build()
