@@ -2309,6 +2309,34 @@ class MainWindow(QMainWindow):
         if not self._tray:
             return
         menu = QMenu()
+        # Style the tray menu to match the app instead of the bare OS one.
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: #0a0d16;
+                border: 1px solid rgba(0,212,255,45);
+                border-radius: 10px;
+                padding: 6px;
+                color: {WHITE};
+                font-family: "Segoe UI";
+                font-size: 13px;
+            }}
+            QMenu::item {{
+                padding: 9px 26px 9px 18px;
+                margin: 2px 4px;
+                border-radius: 7px;
+                background: transparent;
+            }}
+            QMenu::item:selected {{
+                background-color: rgba(0,212,255,28);
+                color: #ffffff;
+            }}
+            QMenu::item:disabled {{ color: {MUTED}; }}
+            QMenu::separator {{
+                height: 1px;
+                background: rgba(255,255,255,14);
+                margin: 5px 10px;
+            }}
+        """)
         act_show  = QAction(tr("tray.open"),  self)
         act_watch = QAction(tr("tray.watch"), self)
         act_stop  = QAction(tr("tray.stop"),  self)
@@ -2324,6 +2352,7 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction(act_quit)
         self._tray.setContextMenu(menu)
+        self._tray_menu = menu  # keep a ref so it isn't garbage-collected
 
     def _on_tray_activated(self, reason) -> None:
         # Double-click on the tray icon → toggle window
