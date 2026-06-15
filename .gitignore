@@ -75,3 +75,6 @@ ffmpeg.exe
 
 # Staged installer payload (built by PyInstaller — too large for git)
 installer/SpaceMusicHub/
+
+# Local tooling (portable gh CLI, release notes) — not part of the project
+.tools/
