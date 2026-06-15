@@ -1555,7 +1555,8 @@ class WizardPage(QWidget):
             # the bot reconstructs `https://www.youtube.com/playlist?list={id}`.
             lines.append(f"CHANNEL_{i}_NAME=channel{i}")
             lines.append(f"CHANNEL_{i}_PLAYLIST={ch.get('playlist', '')}")
-            lines.append(f"CHANNEL_{i}_TELEGRAM={ch.get('channel', '')}")
+            # .env stores the bare handle (no @), matching .env.example / the engine
+            lines.append(f"CHANNEL_{i}_TELEGRAM={ch.get('channel', '').lstrip('@')}")
         ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -2132,7 +2133,7 @@ class DashboardPage(QWidget):
         addition = (
             f"CHANNEL_{next_idx}_NAME=channel{next_idx}\n"
             f"CHANNEL_{next_idx}_PLAYLIST={plist}\n"
-            f"CHANNEL_{next_idx}_TELEGRAM={chan}\n"
+            f"CHANNEL_{next_idx}_TELEGRAM={chan.lstrip('@')}\n"
         )
         if existing and not existing.endswith("\n"):
             existing += "\n"

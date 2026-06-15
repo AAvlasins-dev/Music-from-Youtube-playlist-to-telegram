@@ -282,6 +282,27 @@ def _load_channels() -> list[ChannelConfig]:
         A list of :class:`ChannelConfig`, empty if nothing is configured.
     """
     channels: list[ChannelConfig] = []
+    seen: set[str] = set()
+
+    def _add(name: str, playlist: str, telegram: str) -> None:
+        # Disambiguate the state-file key if two channels share a display
+        # name, so they never read/write each other's "already sent" history
+        # (which would make each mark the other's videos as posted).
+        key = name
+        suffix = 2
+        while key in seen:
+            key = f"{name}_{suffix}"
+            suffix += 1
+        seen.add(key)
+        channels.append(
+            ChannelConfig(
+                name=name,
+                playlist_id=playlist,
+                channel_id=telegram,
+                sent_videos_file=_app_path(f"sent_videos_{key}.json"),
+                pinned_msgs_file=_app_path(f"pinned_msgs_{key}.json"),
+            )
+        )
 
     # Format 1 — numbered pairs (CHANNEL_1_*, CHANNEL_2_*, …)
     index = 1
@@ -291,15 +312,7 @@ def _load_channels() -> list[ChannelConfig]:
         if not playlist or not telegram:
             break
         name = os.getenv(f"CHANNEL_{index}_NAME", f"channel{index}")
-        channels.append(
-            ChannelConfig(
-                name=name,
-                playlist_id=playlist,
-                channel_id=telegram,
-                sent_videos_file=_app_path(f"sent_videos_{name}.json"),
-                pinned_msgs_file=_app_path(f"pinned_msgs_{name}.json"),
-            )
-        )
+        _add(name, playlist, telegram)
         index += 1
 
     if channels:
@@ -310,15 +323,7 @@ def _load_channels() -> list[ChannelConfig]:
         playlist = os.getenv(playlist_var)
         telegram = os.getenv(channel_var)
         if playlist and telegram:
-            channels.append(
-                ChannelConfig(
-                    name=name,
-                    playlist_id=playlist,
-                    channel_id=telegram,
-                    sent_videos_file=_app_path(f"sent_videos_{name}.json"),
-                    pinned_msgs_file=_app_path(f"pinned_msgs_{name}.json"),
-                )
-            )
+            _add(name, playlist, telegram)
 
     return channels
 
@@ -366,19 +371,41 @@ def _validate_config() -> None:
 def load_json(path: str) -> dict[str, Any]:
     """Load a JSON file and return its contents as a dict.
 
-    Returns an empty dict if the file does not exist.
+    Returns an empty dict if the file does not exist or is corrupt (e.g. a
+    crash truncated a previous write). A corrupt state file is backed up to
+    ``<path>.corrupt`` rather than silently overwritten, so it never wedges
+    a channel permanently.
     """
     if not os.path.exists(path):
         logger.debug("State file not found, starting fresh: %s", path)
         return {}
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)  # type: ignore[no-any-return]
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)  # type: ignore[no-any-return]
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        logger.warning(
+            "State file is corrupt (%s) — backing up and starting fresh: %s",
+            exc, path,
+        )
+        try:
+            os.replace(path, f"{path}.corrupt")
+        except OSError:
+            pass
+        return {}
 
 
 def save_json(path: str, data: dict[str, Any]) -> None:
-    """Serialise *data* to *path* as pretty-printed UTF-8 JSON."""
-    with open(path, "w", encoding="utf-8") as f:
+    """Serialise *data* to *path* as pretty-printed UTF-8 JSON.
+
+    Writes to a temporary file and atomically replaces the target so a crash
+    mid-write can never leave a half-written (corrupt) state file behind.
+    """
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
     logger.debug("State saved: %s", path)
 
 
@@ -411,7 +438,8 @@ def with_retry(
     """Decorator that retries a function up to *attempts* times.
 
     Supports both regular and ``async`` functions.  Between attempts the
-    decorator sleeps for ``delay * attempt`` seconds (exponential back-off).
+    decorator sleeps for ``delay * attempt`` seconds (linear back-off:
+    ``delay``, ``2·delay``, ``3·delay`` …).
 
     Args:
         attempts: Maximum number of calls before re-raising.
@@ -656,15 +684,22 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
             )
         return None
 
-    # Clear orphaned files from a previously interrupted run (e.g. the bot
-    # was stopped mid-prefetch) so downloads/ doesn't accumulate. Nothing of
-    # ours is in flight yet at this point, so this is safe.
+    # Clear orphaned downloads from a previously interrupted run (e.g. the bot
+    # was stopped mid-prefetch) so DOWNLOAD_DIR doesn't accumulate. Only the
+    # bot's own artefacts (audio + yt-dlp temp files) are removed, never
+    # unrelated files — DOWNLOAD_DIR may be a folder the user also keeps things
+    # in, so a blanket wipe could destroy their data.
+    _DL_ARTEFACT_EXTS = (
+        ".mp3", ".m4a", ".webm", ".opus", ".ogg", ".mp4",
+        ".part", ".ytdl", ".temp", ".tmp",
+    )
     if os.path.isdir(DOWNLOAD_DIR):
         for _f in os.listdir(DOWNLOAD_DIR):
-            try:
-                os.remove(os.path.join(DOWNLOAD_DIR, _f))
-            except OSError:
-                pass
+            if _f.lower().endswith(_DL_ARTEFACT_EXTS):
+                try:
+                    os.remove(os.path.join(DOWNLOAD_DIR, _f))
+                except OSError:
+                    pass
 
     pending = _schedule_dl(0)  # prefetch the first track
 
@@ -1063,12 +1098,75 @@ def _setup_console() -> None:
             pass
 
 
+def _pid_alive(pid: int) -> bool:
+    """Return True if a process with *pid* is currently running."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+        )
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return True  # can't determine — assume alive (fail safe)
+            return code.value == STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _acquire_lock(lock_file: str) -> bool:
+    """Atomically acquire the single-instance lock.
+
+    Returns True on success. Uses ``O_CREAT | O_EXCL`` so check-and-create is
+    atomic (no TOCTOU race). If a lock already exists but the PID that wrote it
+    is no longer alive, the stale lock is reclaimed instead of blocking forever
+    (e.g. after a crash, on Task Scheduler where no GUI sweeps it).
+    """
+    for _ in range(2):
+        try:
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                with open(lock_file, encoding="utf-8") as fh:
+                    owner = int(fh.read().strip() or "0")
+            except (OSError, ValueError):
+                owner = 0
+            if owner and _pid_alive(owner):
+                return False
+            # Stale lock — its owner is gone. Remove and retry once.
+            try:
+                os.remove(lock_file)
+            except OSError:
+                return False
+            continue
+        else:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(str(os.getpid()))
+            return True
+    return False
+
+
 def _do_run() -> int:
     """Perform a real run (download + post) guarded by a single-instance lock."""
     lock_file = _app_path("bot.lock")
-    if os.path.exists(lock_file):
+    if not _acquire_lock(lock_file):
         logger.error(
-            "Another instance may be running (lock file exists: %s). "
+            "Another instance is already running (lock file: %s). "
             "If the previous run crashed, delete it and try again.",
             lock_file,
         )
@@ -1076,8 +1174,6 @@ def _do_run() -> int:
 
     exit_code = 0
     try:
-        with open(lock_file, "w") as lock_handle:
-            lock_handle.write(str(os.getpid()))
         logger.info("=== space-music-hub bot v%s starting ===", __version__)
         asyncio.run(main())
         logger.info("=== bot run complete ===")
@@ -1156,7 +1252,7 @@ async def watch() -> None:
 def _do_watch() -> int:
     """Run :func:`watch` under the single-instance lock until interrupted."""
     lock_file = _app_path("bot.lock")
-    if os.path.exists(lock_file):
+    if not _acquire_lock(lock_file):
         logger.error(
             "Похоже, программа уже запущена (есть файл %s). "
             "Если прошлый запуск завис — удали этот файл и попробуй снова.",
@@ -1166,8 +1262,6 @@ def _do_watch() -> int:
 
     exit_code = 0
     try:
-        with open(lock_file, "w") as lock_handle:
-            lock_handle.write(str(os.getpid()))
         logger.info("=== space-music-hub watch v%s starting ===", __version__)
         asyncio.run(watch())
     except KeyboardInterrupt:
