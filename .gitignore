@@ -71,6 +71,10 @@ ffmpeg.exe
 # Local personal notes (not part of the project)
 Презентация и инструкция/
 Текстовый документ*.txt
+card_final.png
+
+# Runtime artifact: the GUI writes the selected UI language here (install dir)
+lang.txt
 
 # Local Claude Code settings
 .claude/settings.local.json

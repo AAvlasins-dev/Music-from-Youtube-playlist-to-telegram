@@ -5,7 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Space Music Hub — YouTube → Telegram, as MP3</title>
 <link rel="icon" type="image/png" href="logo.png"/>
-<meta name="description" content="A Telegram bot and standalone Windows app that mirrors YouTube playlists to Telegram channels as MP3. Guided wizard, one-file .exe, tests, CI."/>
+<meta name="description" content="A neon Windows desktop app that mirrors YouTube playlists into Telegram channels as 192 kbps MP3 — setup wizard, live dashboard, scheduler and system tray. PyQt6 + yt-dlp, 86 tests, one-click installer."/>
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="Space Music Hub — YouTube → Telegram, as MP3"/>
+<meta property="og:description" content="A neon Windows desktop app that mirrors YouTube playlists into Telegram channels as 192 kbps MP3 — wizard, dashboard, scheduler, tray."/>
+<meta property="og:url" content="https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/"/>
+<meta property="og:image" content="https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/shot-dashboard.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Space Music Hub — YouTube → Telegram, as MP3"/>
+<meta name="twitter:description" content="A neon Windows desktop app that mirrors YouTube playlists into Telegram channels as 192 kbps MP3."/>
+<meta name="twitter:image" content="https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/shot-dashboard.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -26,8 +36,8 @@
 html{scroll-behavior:smooth;overflow-x:hidden}
 body{background:var(--bg);color:var(--white);font-family:'Space Grotesk',system-ui,sans-serif;overflow-x:hidden;width:100%;max-width:100%;line-height:1.6}
 
-/* VIDEO BACKGROUND */
-#bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.5;pointer-events:none}
+/* IMAGE BACKGROUND */
+#bg-img{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.5;pointer-events:none}
 .bg-overlay{position:fixed;inset:0;z-index:1;background:linear-gradient(180deg,rgba(5,5,5,.55) 0%,rgba(5,5,5,.45) 50%,rgba(5,5,5,.7) 100%);pointer-events:none}
 #aurora{position:fixed;inset:0;z-index:2;pointer-events:none}
 
@@ -195,9 +205,8 @@ footer{position:relative;z-index:3;padding:56px 0 40px;border-top:1px solid var(
 </head>
 <body>
 
-<video id="bg-video" autoplay muted loop playsinline>
-  <source src="bg.mp4" type="video/mp4">
-</video>
+<img id="bg-img" src="bg.jpg" alt="" aria-hidden="true">
+
 <div class="bg-overlay"></div>
 <canvas id="aurora"></canvas>
 
