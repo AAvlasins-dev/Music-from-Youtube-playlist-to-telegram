@@ -1,5 +1,7 @@
 # 🚀 Space Music Hub
 
+> 🧬 **From a Python script to a desktop app** — what began as a command-line `v1-classic` bot grew into a one-click Windows `.exe` with a neon GUI, the same proven engine inside.
+
 [![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-production%20live-brightgreen)
