@@ -127,3 +127,43 @@ class TestLanguage:
         f.write_text("ru", encoding="utf-8")
         monkeypatch.setattr(gui, "LANG_SETTING_FILE", f)
         assert gui._detect_lang() == "ru"
+
+
+# --------------------------------------------------------------------------- #
+# Self-dispatcher — the GUI .exe re-runs itself as the engine via --bot-* flags
+# --------------------------------------------------------------------------- #
+class TestBotDispatcher:
+    """The dispatcher at the top of gui_app.py is the spine of the desktop app:
+    BotWorker relaunches the same executable with --bot-watch/once/check/test,
+    and _run_bot_mode must map each flag to the right engine entry point."""
+
+    def test_flag_to_mode_map(self):
+        assert gui._BOT_MODES == {
+            "--bot-watch": "watch",
+            "--bot-once": "once",
+            "--bot-check": "check",
+            "--bot-test": "test",
+        }
+
+    @pytest.mark.parametrize("mode,fn_name", [
+        ("watch", "_do_watch"),
+        ("once", "_do_run"),
+        ("check", "_do_check"),
+        ("test", "_do_test"),
+    ])
+    def test_run_bot_mode_dispatches_to_engine(self, monkeypatch, mode, fn_name):
+        bot = importlib.import_module("telegram_bot_music_youtube")
+        called: list[str] = []
+        for name in ("_do_watch", "_do_run", "_do_check", "_do_test"):
+            monkeypatch.setattr(bot, name, lambda n=name: called.append(n) or 0)
+        rc = gui._run_bot_mode(mode)
+        assert called == [fn_name]
+        assert rc == 0
+
+    def test_run_bot_mode_returns_engine_exit_code(self, monkeypatch):
+        bot = importlib.import_module("telegram_bot_music_youtube")
+        monkeypatch.setattr(bot, "_do_run", lambda: 7)
+        assert gui._run_bot_mode("once") == 7
+
+    def test_run_bot_mode_unknown_returns_1(self):
+        assert gui._run_bot_mode("nonsense") == 1

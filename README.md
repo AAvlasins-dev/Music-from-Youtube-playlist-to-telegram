@@ -241,7 +241,7 @@ space-music-hub/
 │   └── ci.yml                     # Ruff lint + pytest on every push & PR
 └── tests/
     ├── test_bot.py                # Engine unit tests
-    └── test_gui.py                # GUI-layer unit tests (86 tests total)
+    └── test_gui.py                # GUI-layer unit tests (94 tests total)
 ```
 
 ### 🧪 Testing
@@ -249,16 +249,16 @@ space-music-hub/
 ```bash
 pip install -r requirements-dev.txt
 ruff check .                       # lint
-pytest -q                          # 86 unit tests
+pytest -q                          # 94 unit tests
 ```
 
-**86 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on every push, plus `ruff` linting:
+**94 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on Linux **and** Windows for every push & PR, plus `ruff` linting:
 
 | Area | What's covered |
 |---|---|
 | Engine | playlist-ID / channel-handle parsing, `.env` round-trip, new-video filtering, `ChannelConfig` / `RunResult`, sync + async retry, config validation, ffmpeg discovery, audio-download guards |
-| Posting loop | posts in order through the download pipeline, skips already-sent, counts failures, **oversize tracks skipped not retried**, auto-pin rotation, temp-file cleanup, **HTML-escaped captions**, token-masking log filter |
-| GUI layer | input normalisers, `.env` read/set helpers, the log-line parser regexes that drive the live counters + progress bar, English-first language detection |
+| Posting loop | posts in order through the download pipeline, skips already-sent, counts failures, **oversize tracks skipped not retried**, auto-pin rotation, temp-file cleanup, **HTML-escaped captions**, token-masking log filter (incl. the lazy `%`-args path) |
+| GUI layer | input normalisers, `.env` read/set helpers, the log-line parser regexes that drive the live counters + progress bar, English-first language detection, the **self-dispatcher** that maps `--bot-*` flags to engine entry points |
 
 Network and Telegram calls are mocked — the suite is deterministic, hermetic and runs in ~1 s. The GUI tests touch no `QApplication`, so they run headless in CI (with `QT_QPA_PLATFORM=offscreen`).
 

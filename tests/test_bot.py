@@ -664,8 +664,24 @@ class TestTokenMaskFilter:
         bot._mask_filter.filter(rec)
         return rec.getMessage()
 
+    def _mask_lazy(self, msg, args):
+        import logging
+        rec = logging.LogRecord("x", logging.INFO, "", 0, msg, args, None)
+        bot._mask_filter.filter(rec)
+        return rec.getMessage()
+
     def test_masks_token_in_url(self):
         out = self._mask("POST https://api.telegram.org/bot8280083661:AAE7tJTovxEO/getMe")
+        assert "AAE7tJTovxEO" not in out
+        assert "bot8280083661:***" in out
+
+    def test_masks_token_in_lazy_args(self):
+        # httpx / python-telegram-bot log request URLs via lazy %-args, NOT in
+        # the message string — this is the path most likely to leak a token.
+        out = self._mask_lazy(
+            "HTTP Request: %s %s",
+            ("POST", "https://api.telegram.org/bot8280083661:AAE7tJTovxEO/sendAudio"),
+        )
         assert "AAE7tJTovxEO" not in out
         assert "bot8280083661:***" in out
 

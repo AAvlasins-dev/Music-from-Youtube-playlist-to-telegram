@@ -19,7 +19,7 @@ cp .env.example .env                   # fill in your credentials
 
 ```bash
 ruff check .                              # lint — must be clean
-QT_QPA_PLATFORM=offscreen pytest -q       # full suite (86 tests), headless Qt
+QT_QPA_PLATFORM=offscreen pytest -q       # full suite (94 tests), headless Qt
 ```
 
 `QT_QPA_PLATFORM=offscreen` lets the PyQt6 GUI tests run without a display

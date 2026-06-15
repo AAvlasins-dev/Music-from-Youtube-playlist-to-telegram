@@ -7,7 +7,14 @@ on:
 
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
+    # Test on both the CI default (Linux) and the real target OS (Windows),
+    # where the winreg autostart / CREATE_NO_WINDOW / .exe-discovery code paths
+    # actually run.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
@@ -19,7 +26,8 @@ jobs:
           python-version: '3.12'
           cache: pip
 
-      - name: Install Qt runtime libraries (for the PyQt6 GUI tests)
+      - name: Install Qt runtime libraries (Linux only — for the PyQt6 GUI tests)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
