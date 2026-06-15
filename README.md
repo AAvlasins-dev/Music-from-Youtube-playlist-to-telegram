@@ -20,9 +20,9 @@ This repository shows the project's evolution from a simple script to a full des
 | Branch | Edition | What it is |
 |---|---|---|
 | [`v1-classic`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/tree/v1-classic) | **Classic** | The original Python script bot — `yt-dlp` + Telegram, run from the command line. Clean code, tests, CI, Docker. |
-| [`master`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram) | **App** (this one) | The evolution — a standalone Windows `.exe` with an interactive setup wizard and a menu-driven UI. No Python, no config files. |
+| [`master`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram) | **Desktop app** (this one) | The evolution — a polished **PyQt6 desktop app** (one Windows `.exe` + installer). Neon dashboard, a graphical 3-step setup wizard, background system-tray mode, a check scheduler, live progress, and a trilingual UI. No Python, no config files. |
 
-> The `master` edition grew out of `v1-classic`: same engine, evolved into a product anyone can install and use.
+> The `master` edition grew out of `v1-classic`: **same proven engine** (the `v1-classic` bot is bundled and driven by the GUI), wrapped into a product anyone can install and use.
 
 ---
 
@@ -36,52 +36,65 @@ This repository shows the project's evolution from a simple script to a full des
 
 ## English
 
-Watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-dlp + ffmpeg**, and posts it straight to your Telegram channel — with the original YouTube link in the caption and the latest track auto-pinned.
+A **desktop app for Windows** that watches YouTube playlists, downloads every new track as a 192 kbps MP3 via **yt-dlp + ffmpeg**, and posts it straight to your Telegram channel — with the original YouTube link in the caption and the latest track auto-pinned. Install the `.exe`, follow a 3-step graphical wizard, and leave it running in the system tray.
 
 > 🟢 **Live in production** — currently mirroring 1 000+ tracks to [@music_ebat_2026](https://t.me/music_ebat_2026) and [@baiba_music](https://t.me/baiba_music).
 
+🌐 **See it in action:** [live presentation site](https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/) · ⬇️ **Get it:** [Releases](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases)
+
 ### ✨ Features
+
+**🖥️ Desktop app (PyQt6)**
 
 | Feature | Description |
 |---|---|
-| 🧙 Guided setup wizard | Teaches the user to create the bot, get the playlist and link the channel — verified live, zero config files |
-| ▶️ Auto / watch mode | Leave the window open — new tracks are posted automatically every 15 min |
-| 📦 Standalone `.exe` | One-file Windows build — no Python required on the target PC |
-| 🖥️ Menu-driven app | Start / Run once / Check / Reconfigure; `--watch` &amp; `--run` for automation |
-| 🔎 `--check` dry-run | Validate config + count new tracks without posting anything |
-| ♾️ Unlimited channels | Add channels in the wizard or via `CHANNEL_N_*` — no code changes |
-| 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real MP3 file |
+| 🧙 Graphical setup wizard | 3 steps — paste bot token, add channel + playlist, review & save. Each channel can be **tested live** (the bot posts and deletes a probe message) before you commit. Detailed step-by-step instructions built in. |
+| 📊 Live dashboard | Watch / Run once / Check / Stop, a **progress bar** ("track 5 of 55"), live counters (posted / failed / runs), and a **colour-coded log** with a Simple/Expert toggle |
+| ⏰ Check scheduler | Choose how often to re-check: every hour / 2 hours / daily / weekly, plus a one-click **launch-at-Windows-startup** toggle |
+| 🔔 System-tray background mode | Closing the window hides to the tray; the bot keeps running and can auto-start hidden on boot |
+| ➕ Add pairs on the fly | Add another channel + playlist right from the dashboard — no need to re-run the wizard |
+| 🌍 Trilingual UI | English / Русский / Latviešu, switchable live; defaults to English on first launch |
+| 📦 One-file installer | Inno Setup `.exe` — per-user install, Desktop + Start-Menu shortcuts, clean uninstall. No Python on the target PC |
+
+**🤖 Engine (bundled bot)**
+
+| Feature | Description |
+|---|---|
+| 🎵 MP3 download & send | Downloads audio via `yt-dlp` + `ffmpeg`, sends as a real 192 kbps MP3 |
+| ⚡ Download pipeline | The next track downloads while the current one uploads — ~30–40 % faster on large batches, at no extra CPU cost |
+| 🪫 Background-friendly | Runs at below-normal process priority so the PC stays responsive while it works |
+| ♾️ Unlimited channels | One token → many `channel ↔ playlist` pairs |
 | 🔒 Single-instance lock | `bot.lock` prevents two runs colliding and duplicating posts |
 | 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH, beside the app, or via `ffmpeg-downloader` |
-| 🔗 YouTube link in caption | Each post includes the original YouTube link |
-| 📌 Auto-pinning | Unpins the previous post, pins the latest one automatically |
-| 💾 State persistence | Tracks posted videos in JSON files — never re-posts the same track |
+| 🔗 / 📌 Link + auto-pin | Each post links back to YouTube; the latest track is auto-pinned (previous unpinned) |
+| 💾 State persistence | Posted videos tracked in JSON — never re-posts the same track; oversize (>50 MB) tracks are skipped, not retried forever |
 | 🔁 Retry logic | Retries failed downloads and Telegram API calls with exponential back-off |
-| 📋 Structured logging | Logs to console and a rotating `bot.log` file (5 MB × 3 backups) |
-| 🔔 Admin notifications | Optional summary message to your own Telegram on each run |
-| 🐳 Docker-ready | Ships with `Dockerfile` and `docker-compose.yml` |
-| ⚙️ Fully configurable | All behaviour controlled via environment variables |
-| 🪟 Windows-friendly | Handles non-ASCII paths; `run_bot.bat` for Task Scheduler |
+| 🔒 Token-safe logs | The bot token is masked in logs and never leaks into the UI or `bot.log` |
+| 📋 Structured logging | Console + rotating `bot.log` (5 MB × 3 backups) |
+| 🐳 Docker-ready | The engine also ships with `Dockerfile` + `docker-compose.yml` for headless use |
 
 ### 🏗 Architecture
 
-```mermaid
-flowchart TD
-    A([▶ Scheduler\nTask Scheduler / cron]) --> B
+**Desktop app ↔ engine.** The shipped `.exe` is the PyQt6 GUI. When you press *Watch* / *Run once* / *Check*, the GUI doesn't import the bot in-process — it **re-launches its own executable** with a `--bot-watch` / `--bot-once` / `--bot-check` flag. A dispatch guard at the top of `gui_app.py` sees the flag and runs the bundled engine instead of showing a window, streaming its stdout back into the dashboard log. One binary, two roles — no separate Python interpreter needed in the bundle, and a bot crash can never take the UI down with it.
 
-    subgraph BOT["🤖 space-music-hub bot"]
-        B[📋 Fetch playlist\nyt-dlp flat extract] --> C{New videos?}
-        C -- No --> Z([✅ Done — nothing to post])
-        C -- Yes --> D[🔍 Filter already-sent\nsent_videos_*.json]
-        D --> E[⬇️ Download audio\nyt-dlp + ffmpeg → MP3]
-        E --> F[📤 Send to Telegram\nbot.send_audio]
-        F --> G[📌 Pin latest message\nunpin previous]
-        G --> H[💾 Save state\nsent_videos_*.json\npinned_msgs_*.json]
+```mermaid
+flowchart LR
+    subgraph APP["🖥️ SpaceMusicHub.exe (PyQt6 GUI)"]
+        UI[Dashboard / Wizard / Tray]
+    end
+    UI -- "subprocess: self.exe --bot-watch" --> ENG
+    subgraph ENG["🤖 Bundled engine (same .exe, --bot-* mode)"]
+        B[📋 Fetch playlist] --> C{New videos?}
+        C -- No --> Z([✅ Nothing to post])
+        C -- Yes --> D[🔍 Filter already-sent]
+        D --> E[⬇️ Download + transcode\nyt-dlp + ffmpeg → MP3]
+        E --> F[📤 Send to Telegram]
+        F --> G[📌 Pin latest / unpin previous]
+        G --> H[💾 Persist state JSON]
         H --> E
     end
-
-    YT[(🎬 YouTube)] --> B
-    YT --> E
+    ENG -- "stdout (progress, log)" --> UI
+    YT[(🎬 YouTube)] --> E
     F --> TG[(📣 Telegram Channel)]
 ```
 
@@ -103,38 +116,37 @@ GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube ident
 
 ### 🚀 Quick Start
 
-#### Option 0 — Ready-made Windows app (no Python, no config files) ⭐
+#### Option 0 — Ready-made Windows desktop app (no Python, no config files) ⭐
 
-Download the ZIP from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page, unzip, and **double-click `SpaceMusicHub.exe`**. On first launch an **interactive setup wizard** asks for your bot token, channel and playlist — verifies each one live — and writes the config for you. No manual `.env` editing.
-
-```text
-[1/3] Telegram bot token   ->  paste token   (verified instantly)
-[2/3] Channels             ->  paste @channel + playlist URL
-[3/3] Saving configuration ->  done — Run now? (Y/n)
-```
-
-After setup, every launch shows a simple menu:
+Download **`SpaceMusicHub-Setup.exe`** from the [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases) page and run it. The installer puts the app in `%LOCALAPPDATA%\Programs`, creates shortcuts, and optionally registers launch-at-startup. On first launch a **graphical 3-step wizard** walks you through it:
 
 ```text
-  1) Start (auto)  - keep running; new tracks are posted automatically
-  2) Run once      - post new tracks and exit
-  3) Check         - verify config, count new tracks (no posting)
-  4) Reconfigure   - run the setup wizard again
-  5) Exit
+[1] Bot token   ->  create a bot via @BotFather, paste the token   (built-in instructions)
+[2] Channel     ->  @channel + playlist URL    ·  "Test channel" posts a live probe
+[3] Review      ->  save & launch the dashboard
 ```
 
-**Auto mode** — pick option 1, leave the window open, and the app re-checks the
-playlist every 15 minutes, posting new tracks as they appear. No scheduler needed.
+From the **dashboard** you then drive everything with buttons:
 
-CLI flags for automation: `--watch` (run forever) · `--run` (single, for Task Scheduler) · `--check` · `--setup`
+| Button | What it does |
+|---|---|
+| ▶ **Watch** | Keep checking at the chosen interval and auto-post new tracks |
+| ⚡ **Run once** | Post everything new right now, then stop |
+| 🔍 **Check** | Validate config + count new tracks (no posting) |
+| ⚙ **Config** | Re-open the wizard |
+
+Pick an interval in the **schedule** panel (hourly / daily / weekly), tick **launch at Windows startup**, and the app sits in the **system tray** doing its thing — survives reboots, posts new tracks as they appear, no external scheduler needed.
 
 📖 **Full step-by-step guide (RU):** [INSTALL.md](INSTALL.md)
 
-Build it yourself from source:
+**Build the desktop app from source:**
 ```cmd
 pip install -r requirements.txt pyinstaller
-build_exe.bat                 # → dist\SpaceMusicHub.exe
+pyinstaller --noconfirm SpaceMusicHubGUI.spec      :: -> dist\SpaceMusicHub\SpaceMusicHub.exe
+iscc installer\SpaceMusicHub.iss                   :: -> dist\SpaceMusicHub-Setup-vX.Y.Z.exe (needs Inno Setup 6)
 ```
+
+> The same bundled engine runs headless too (`SpaceMusicHub.exe --bot-watch`), and the classic script (`python telegram_bot_music_youtube.py`) still works — see the options below.
 
 #### Option 1 — Local Python + Windows Task Scheduler
 
@@ -210,32 +222,57 @@ https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 
 ```
 space-music-hub/
-├── telegram_bot_music_youtube.py   # Main bot script
-├── build_exe.bat                   # Builds dist\SpaceMusicHub.exe (PyInstaller)
-├── INSTALL.md                      # Detailed Windows install guide (RU)
-├── requirements.txt                # Python dependencies
-├── Dockerfile                      # Docker image definition
-├── docker-compose.yml              # Docker Compose config
-├── .env.example                    # Environment variables template
-├── .gitignore                      # Git ignore rules
-├── CHANGELOG.md                    # Version history
-├── .github/
-│   └── workflows/
-│       ├── bot.yml                 # Scheduled bot runner (daily)
-│       └── ci.yml                  # Lint + tests on every push
+├── gui_app.py                      # PyQt6 desktop app (wizard, dashboard, tray, scheduler)
+├── telegram_bot_music_youtube.py  # The engine — playlist → MP3 → Telegram
+├── SpaceMusicHubGUI.spec          # PyInstaller spec (bundles the GUI + engine + assets)
+├── installer/
+│   ├── SpaceMusicHub.iss          # Inno Setup script → SpaceMusicHub-Setup.exe
+│   └── Latvian.isl                # Latvian translation for the installer UI
+├── docs/                          # GitHub Pages presentation site + logo/bg assets
+├── INSTALL.md                     # Detailed Windows install guide (RU)
+├── requirements.txt               # Runtime dependencies (incl. PyQt6)
+├── requirements-dev.txt           # + pytest, ruff
+├── Dockerfile / docker-compose.yml # Headless engine deployment
+├── .env.example                   # Environment-variable template
+├── pyproject.toml                 # Ruff + pytest config
+├── CHANGELOG.md                   # Version history
+├── .github/workflows/
+│   ├── bot.yml                    # Scheduled engine runner (daily)
+│   └── ci.yml                     # Ruff lint + pytest on every push
 └── tests/
-    └── test_bot.py                 # 55 unit tests (pytest)
+    ├── test_bot.py                # Engine unit tests
+    └── test_gui.py                # GUI-layer unit tests (86 tests total)
 ```
+
+### 🧪 Testing
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .                       # lint
+pytest -q                          # 86 unit tests
+```
+
+**86 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on every push, plus `ruff` linting:
+
+| Area | What's covered |
+|---|---|
+| Engine | playlist-ID / channel-handle parsing, `.env` round-trip, new-video filtering, `ChannelConfig` / `RunResult`, sync + async retry, config validation, ffmpeg discovery, audio-download guards |
+| Posting loop | posts in order through the download pipeline, skips already-sent, counts failures, **oversize tracks skipped not retried**, auto-pin rotation, temp-file cleanup, **HTML-escaped captions**, token-masking log filter |
+| GUI layer | input normalisers, `.env` read/set helpers, the log-line parser regexes that drive the live counters + progress bar, English-first language detection |
+
+Network and Telegram calls are mocked — the suite is deterministic, hermetic and runs in ~1 s. The GUI tests touch no `QApplication`, so they run headless in CI (with `QT_QPA_PLATFORM=offscreen`).
 
 ### 📦 Dependencies
 
 | Package | Version | Purpose |
 |---|---|---|
+| `PyQt6` | ≥ 6.7 | Desktop GUI (dashboard, wizard, tray, scheduler) |
 | `python-telegram-bot` | 21.6 | Telegram Bot API client |
 | `yt-dlp` | latest | YouTube playlist extraction + audio download |
 | `python-dotenv` | 1.0.1 | Load environment variables from `.env` |
 | `ffmpeg-downloader` | ≥ 0.3 | Auto-downloads a portable `ffmpeg` binary if not on PATH |
 
+> Packaged with **PyInstaller** (one-folder bundle) + **Inno Setup 6** (installer). Dev tooling: **pytest** + **ruff**.
 > **ffmpeg** is detected automatically: PATH → `ffmpeg-downloader` bundle → explicit `FFMPEG_PATH` env var. In Docker it is installed by the `Dockerfile`. On Windows, install via `pip install ffmpeg-downloader && python -m ffmpeg_downloader install`.
 
 ### 📝 License
@@ -255,9 +292,11 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Русский
 
-Следит за YouTube-плейлистами, скачивает каждый новый трек как MP3 192 kbps через **yt-dlp + ffmpeg** и отправляет прямо в Telegram-канал — со ссылкой на YouTube в подписи и автозакреплением последнего трека.
+**Десктоп-приложение для Windows**: следит за YouTube-плейлистами, скачивает каждый новый трек как MP3 192 kbps через **yt-dlp + ffmpeg** и отправляет прямо в Telegram-канал — со ссылкой на YouTube в подписи и автозакреплением последнего трека. Ставишь `.exe`, проходишь графический мастер из 3 шагов, и оно работает в фоне в системном трее.
 
 > 🟢 **Работает в продакшне** — прямо сейчас зеркалирует 1 000+ треков в [@music_ebat_2026](https://t.me/music_ebat_2026) и [@baiba_music](https://t.me/baiba_music).
+
+> 🖥️ **PyQt6-приложение:** неоновый дашборд, мастер настройки с пошаговыми инструкциями и кнопкой «Тест канала», фоновый режим в трее, планировщик проверок (час / день / неделя), автозапуск с Windows, прогресс-бар, конвейерная загрузка, и интерфейс на 3 языках (EN / RU / LV). Один установщик `.exe`, Python на целевом ПК не нужен. Движок — это проверенный бот из ветки `v1-classic`, встроенный в приложение.
 
 ### ✨ Возможности
 
