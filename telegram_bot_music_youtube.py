@@ -643,18 +643,43 @@ async def post_new_videos(channel: ChannelConfig) -> RunResult:
     posted = 0
     failed = 0
 
+    # ── 1-deep download pipeline ──────────────────────────────────────
+    # Start each track's download + ffmpeg transcode while the PREVIOUS
+    # track is still uploading/pinning, so the two slow phases (download
+    # and upload) overlap instead of running strictly back-to-back. Posts
+    # still happen in order. The thread pool (max_workers=2) comfortably
+    # holds the current + next download.
+    def _schedule_dl(zero_idx: int):
+        if 0 <= zero_idx < len(new_videos):
+            return loop.run_in_executor(
+                _executor, _download_audio, new_videos[zero_idx]["id"]
+            )
+        return None
+
+    # Clear orphaned files from a previously interrupted run (e.g. the bot
+    # was stopped mid-prefetch) so downloads/ doesn't accumulate. Nothing of
+    # ours is in flight yet at this point, so this is safe.
+    if os.path.isdir(DOWNLOAD_DIR):
+        for _f in os.listdir(DOWNLOAD_DIR):
+            try:
+                os.remove(os.path.join(DOWNLOAD_DIR, _f))
+            except OSError:
+                pass
+
+    pending = _schedule_dl(0)  # prefetch the first track
+
     for i, video in enumerate(new_videos, 1):
         video_id: str = video["id"]
         title: str = video["title"]
         mp3_path: str | None = None
+        dl_future = pending
+        pending = _schedule_dl(i)  # prefetch the NEXT track (overlaps this upload)
 
         try:
             logger.info(
                 "[%s] [%d/%d] Downloading: %s", channel.name, i, len(new_videos), title
             )
-            mp3_path = await loop.run_in_executor(
-                _executor, _download_audio, video_id
-            )
+            mp3_path = await dl_future
 
             # Telegram bot API rejects audio files larger than 50 MB. Such a
             # track would fail to send on every cycle forever — instead mark
