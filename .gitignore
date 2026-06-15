@@ -11,7 +11,9 @@ bot.lock
 # PyInstaller build artifacts (the .exe is published via GitHub Releases)
 build/
 dist/
+# ...but keep the custom GUI build recipe in the repo
 *.spec
+!SpaceMusicHubGUI.spec
 
 # Docker volume data directory
 data/
