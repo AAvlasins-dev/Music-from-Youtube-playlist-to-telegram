@@ -118,12 +118,31 @@ section{position:relative;z-index:3;padding:100px 0}
 .feat-desc{font-size:13.5px;color:var(--text);line-height:1.65}
 .feat-tag{display:inline-block;margin-top:16px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(0,212,255,.08);color:var(--cyan);border:1px solid rgba(0,212,255,.18)}
 
-/* TERMINAL */
-.term{background:#02020a;border:1px solid var(--border);border-radius:16px;margin-top:28px;overflow:hidden;font-family:ui-monospace,'Cascadia Code','Fira Code',monospace}
-.term-bar{display:flex;gap:7px;padding:12px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
-.term-bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
-.term pre{margin:0;padding:20px 22px;font-size:13px;line-height:1.85;color:#6a7590;white-space:pre-wrap}
-.tc{color:var(--cyan)}.tg{color:#34d399}.tm{color:var(--muted)}
+/* WIZARD MOCKUP (the real graphical app, not a terminal) */
+.wiz{margin-top:28px;border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:#080b12;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.wiz-bar{display:flex;align-items:center;gap:9px;padding:11px 16px;background:rgba(5,5,5,.55);border-bottom:1px solid var(--border)}
+.wiz-bar .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.wiz-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;margin-left:6px;box-shadow:0 0 0 1px rgba(0,212,255,.4)}
+.wiz-brand{font-family:'Unbounded',sans-serif;font-weight:700;font-size:13px;color:var(--white)}
+.wiz-langs{margin-left:auto;display:flex;gap:4px;font-size:11px;font-weight:700}
+.wiz-langs span{padding:3px 9px;border-radius:6px;color:var(--text);border:1px solid var(--border)}
+.wiz-langs .on{background:var(--cyan);color:#02020a;border-color:var(--cyan)}
+.wiz-body{padding:26px 30px 28px}
+.wiz-pills{display:flex;align-items:center;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.wiz-pill{font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 13px;border-radius:999px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border)}
+.wiz-pill.done{color:var(--cyan);border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.06)}
+.wiz-pill.active{color:#02020a;background:var(--cyan);border-color:var(--cyan)}
+.wiz-pills .ln{color:var(--muted);font-size:12px}
+.wiz-step{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--cyan);margin-bottom:8px}
+.wiz-h{font-family:'Unbounded',sans-serif;font-weight:700;font-size:19px;color:var(--white);margin-bottom:18px;line-height:1.2}
+.wiz-field{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:13px 16px;color:var(--text);font-size:14px;margin-bottom:10px;font-family:ui-monospace,'Cascadia Code',monospace}
+.wiz-field.cyan{border-color:rgba(0,212,255,.45);background:rgba(0,212,255,.05);color:#cfeffb}
+.wiz-row{display:flex;align-items:center;gap:12px;margin:14px 0 24px;flex-wrap:wrap}
+.wiz-test{font-size:13px;font-weight:600;color:var(--white);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:9px 18px}
+.wiz-ok{font-size:13px;color:#34d399;font-weight:500}
+.wiz-actions{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.wiz-back{font-size:13px;color:var(--text)}
+.wiz-next{font-size:13px;font-weight:700;color:#02020a;background:linear-gradient(135deg,var(--cyan),#0099bb);border-radius:10px;padding:11px 24px;box-shadow:0 0 30px rgba(0,212,255,.3)}
 
 /* EDITIONS */
 .editions-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -342,18 +361,30 @@ footer{position:relative;z-index:3;padding:56px 0 40px;border-top:1px solid var(
       <h2 class="sec-title"><span data-i18n="s3.title.a">A real app, </span><span style="color:var(--purple)" data-i18n="s3.title.b">not a config file</span></h2>
       <p class="sec-sub" data-i18n="s3.sub">Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.</p>
     </div>
-    <div class="term reveal" style="transition-delay:.1s">
-      <div class="term-bar">
-        <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+    <div class="wiz reveal" style="transition-delay:.1s">
+      <div class="wiz-bar">
+        <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+        <img class="wiz-logo" src="logo.png" alt=""/>
+        <span class="wiz-brand">Space Music Hub</span>
+        <span class="wiz-langs"><span class="on">EN</span><span>LV</span><span>RU</span></span>
       </div>
-      <pre>  <span class="tc">[1/3]</span> <span data-i18n="tl1">Telegram bot token</span>
-        <span data-i18n="tl2">paste token</span>  ...  <span class="tg" data-i18n="tl3">OK — connected</span>
-
-  <span class="tc">[2/3]</span> <span data-i18n="tl4">Channels</span>
-        @your_channel    <span class="tg" data-i18n="tl5">OK — found</span>
-        playlist URL     <span class="tg" data-i18n="tl6">OK — 1055 tracks</span>
-
-  <span class="tc">[3/3]</span> <span data-i18n="tl7">Saved</span>  ...  <span class="tm" data-i18n="tl8">Start now? (Y/n)</span></pre>
+      <div class="wiz-body">
+        <div class="wiz-pills">
+          <span class="wiz-pill done">1 · TOKEN</span><span class="ln">──</span><span class="wiz-pill active">2 · CHANNEL</span><span class="ln">──</span><span class="wiz-pill">3 · DONE</span>
+        </div>
+        <div class="wiz-step">STEP 2 OF 3</div>
+        <div class="wiz-h" data-i18n="wz.h">Add your channel &amp; playlist</div>
+        <div class="wiz-field">@your_channel</div>
+        <div class="wiz-field">https://youtube.com/playlist?list=PL…</div>
+        <div class="wiz-row">
+          <span class="wiz-test" data-i18n="wz.test">Test channel</span>
+          <span class="wiz-ok" data-i18n="wz.ok">✓ Bot can post to “My Music”</span>
+        </div>
+        <div class="wiz-actions">
+          <span class="wiz-back" data-i18n="wz.back">← Back</span>
+          <span class="wiz-next" data-i18n="wz.next">Continue →</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -512,7 +543,7 @@ const I18N={
     "f6.t":"Ships Everywhere","f6.d":"Dockerfile, GitHub Actions, PyInstaller .exe build, 3-language docs.","f6.tag":"DevOps",
     "s3.label":"Setup","s3.title.a":"A real app, ","s3.title.b":"not a config file",
     "s3.sub":"Double-click the .exe and an interactive wizard walks you through setup — verifying every value live. No Python, no .env editing.",
-    "tl1":"Telegram bot token","tl2":"paste token","tl3":"OK — connected","tl4":"Channels","tl5":"OK — found","tl6":"OK — 1055 tracks","tl7":"Saved","tl8":"Start now? (Y/n)",
+    "wz.h":"Add your channel & playlist","wz.test":"Test channel","wz.ok":"✓ Bot can post to “My Music”","wz.back":"← Back","wz.next":"Continue →",
     "s4.label":"Editions","s4.title.a":"Two ","s4.title.b":"editions",
     "s4.sub":"The project's evolution — from a CLI script to a packaged desktop product — lives in one repository.",
     "e1.t":"Classic Script","e1.a":"Pure Python CLI bot","e1.b":"yt-dlp + Telegram engine","e1.c":"Tests, CI, Docker","e1.d":"For developers & servers",
@@ -548,7 +579,7 @@ const I18N={
     "f6.t":"Запускается везде","f6.d":"Dockerfile, GitHub Actions, PyInstaller, документация на 3 языках.","f6.tag":"DevOps",
     "s3.label":"Установка","s3.title.a":"Настоящее приложение, ","s3.title.b":"а не конфиг",
     "s3.sub":"Двойной клик по .exe — мастер проводит настройку и проверяет каждое значение вживую. Без Python, без .env.",
-    "tl1":"Токен бота Telegram","tl2":"вставь токен","tl3":"ОК — подключено","tl4":"Каналы","tl5":"ОК — найден","tl6":"ОК — 1055 треков","tl7":"Сохранено","tl8":"Запустить? (Y/n)",
+    "wz.h":"Добавь канал и плейлист","wz.test":"Тест канала","wz.ok":"✓ Бот может писать в «My Music»","wz.back":"← Назад","wz.next":"Дальше →",
     "s4.label":"Версии","s4.title.a":"Две ","s4.title.b":"версии",
     "s4.sub":"Эволюция проекта — от чистого скрипта до упакованного приложения — в одном репозитории.",
     "e1.t":"Классический скрипт","e1.a":"Чистый Python CLI-бот","e1.b":"Движок yt-dlp + Telegram","e1.c":"Тесты, CI, Docker","e1.d":"Для разработчиков и серверов",
@@ -584,7 +615,7 @@ const I18N={
     "f6.t":"Darbojas visur","f6.d":"Dockerfile, GitHub Actions, PyInstaller, dokumentācija 3 valodās.","f6.tag":"DevOps",
     "s3.label":"Iestatīšana","s3.title.a":"Īsta lietotne, ","s3.title.b":"nevis konfig. fails",
     "s3.sub":"Dubultklikšķis uz .exe — vednis soli pa solim pavada iestatīšanu un pārbauda katru vērtību.",
-    "tl1":"Telegram bota marķieris","tl2":"ielīmē marķieri","tl3":"OK — savienots","tl4":"Kanāli","tl5":"OK — atrasts","tl6":"OK — 1055 dziesmas","tl7":"Saglabāts","tl8":"Sākt tagad? (Y/n)",
+    "wz.h":"Pievieno kanālu un sarakstu","wz.test":"Testēt kanālu","wz.ok":"✓ Bots var rakstīt uz “My Music”","wz.back":"← Atpakaļ","wz.next":"Tālāk →",
     "s4.label":"Versijas","s4.title.a":"Divas ","s4.title.b":"versijas",
     "s4.sub":"Projekta evolūcija — no komandrindas skripta līdz darbvirsmas lietotnei — vienā repozitorijā.",
     "e1.t":"Klasiskais skripts","e1.a":"Tīrs Python CLI bots","e1.b":"yt-dlp + Telegram dzinējs","e1.c":"Testi, CI, Docker","e1.d":"Izstrādātājiem un serveriem",
