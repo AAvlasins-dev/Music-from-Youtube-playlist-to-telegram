@@ -11,44 +11,62 @@ cd Music-from-Youtube-playlist-to-telegram
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-pip install -r requirements-dev.txt
-cp .env.example .env             # fill in your credentials
+pip install -r requirements-dev.txt   # pulls in requirements.txt (incl. PyQt6) + test/lint tools
+cp .env.example .env                   # fill in your credentials
 ```
 
 ## Running tests
 
 ```bash
-pytest          # run the full test suite
-ruff check .    # lint
+ruff check .                              # lint — must be clean
+QT_QPA_PLATFORM=offscreen pytest -q       # full suite (86 tests), headless Qt
 ```
 
-All tests must pass and there must be zero lint errors before opening a PR.
+`QT_QPA_PLATFORM=offscreen` lets the PyQt6 GUI tests run without a display
+(this is what CI does). All tests must pass and there must be zero lint
+errors before opening a PR.
 
 ## Project structure
 
 ```
-telegram_bot_music_youtube.py   ← single-file bot (keep it this way)
-tests/test_bot.py               ← unit tests (pure functions only)
+gui_app.py                      ← PyQt6 desktop app: wizard, dashboard, tray,
+                                  scheduler, i18n — also the self-dispatcher that
+                                  re-launches the engine on --bot-watch/once/check
+telegram_bot_music_youtube.py   ← engine: YouTube playlist → MP3 → Telegram
+SpaceMusicHubGUI.spec           ← PyInstaller build recipe (GUI + engine + assets)
+installer/SpaceMusicHub.iss     ← Inno Setup script → the Windows installer
+tests/
+    test_bot.py                 ← engine unit tests
+    test_gui.py                 ← GUI / log-parser unit tests
+    conftest.py                 ← shared fixtures
 .github/workflows/
-    bot.yml                     ← scheduled runner
-    ci.yml                      ← lint + test on every push
+    ci.yml                      ← lint + test on every push and PR
+    bot.yml                     ← headless engine, manual dispatch only
 ```
 
-## How to add a new playlist → channel pair
+## Architecture in one paragraph
 
-Open `telegram_bot_music_youtube.py` and append a new `ChannelConfig` to the `CHANNELS` list:
+The built `SpaceMusicHub.exe` is the GUI. When the user clicks Watch / Run
+once / Check, the GUI **re-launches itself** with a `--bot-watch` /
+`--bot-once` / `--bot-check` flag; a dispatcher at the top of `gui_app.py`
+sees the flag and runs the bundled engine instead of opening a window,
+streaming the engine's stdout back into the dashboard log. No separate Python
+is bundled, and a bot crash can't take down the UI.
 
-```python
-ChannelConfig(
-    name="my_channel",
-    playlist_id=os.getenv("PLAYLIST_MY_CHANNEL", ""),
-    channel_id=os.getenv("TELEGRAM_CHANNEL_MY_CHANNEL", ""),
-    sent_videos_file="sent_videos_my_channel.json",
-    pinned_msgs_file="pinned_msgs_my_channel.json",
-),
+## How to add a playlist → channel pair
+
+End users do this in the GUI wizard (or the **+ Add another channel** field on
+the dashboard) — no code changes needed. Under the hood it writes numbered
+`CHANNEL_N_*` variables to `.env` (see `.env.example`):
+
+```dotenv
+CHANNEL_1_NAME=my_channel
+CHANNEL_1_TELEGRAM=my_channel
+CHANNEL_1_PLAYLIST=https://www.youtube.com/playlist?list=...
 ```
 
-Then add the two new variables to your `.env` and GitHub Actions secrets.
+The engine reads every `CHANNEL_N_*` group at startup — you don't edit a
+`CHANNELS` list in code.
 
 ## Commit style
 
@@ -65,10 +83,10 @@ chore: bump yt-dlp to 2025.3.1
 
 1. Fork → create a feature branch (`git checkout -b feat/my-feature`)
 2. Make your changes + add/update tests
-3. `pytest && ruff check .` — must be clean
+3. `ruff check . && QT_QPA_PLATFORM=offscreen pytest` — must be clean
 4. Push and open a PR against `master`
 5. Fill in the PR template
 
 ## Reporting bugs
 
-Please use the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.yml) issue template and include your `bot.log` output.
+Please use the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.yml) issue template and include your `bot.log` output (the token is masked automatically).

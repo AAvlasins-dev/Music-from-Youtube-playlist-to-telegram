@@ -1,37 +1,28 @@
 @echo off
 REM ===========================================================================
-REM  Build SpaceMusicHub.exe — a standalone Windows executable of the bot.
+REM  Build Space Music Hub — the PyQt6 desktop app — into a standalone folder.
 REM
 REM  Requirements (one-time):
-REM      pip install -r requirements.txt
-REM      pip install pyinstaller
+REM      pip install -r requirements-dev.txt
 REM
 REM  Output:
-REM      dist\SpaceMusicHub.exe   <- the executable
+REM      dist\SpaceMusicHub\SpaceMusicHub.exe   <- the desktop app
 REM
-REM  After building, ship dist\SpaceMusicHub.exe together with:
-REM      ffmpeg.exe    (audio conversion — auto-detected next to the exe)
-REM  The .env is created automatically by the first-run setup wizard.
+REM  The build recipe (entry point, bundled engine + assets, excluded Qt
+REM  modules, icon) lives in SpaceMusicHubGUI.spec. To produce the Windows
+REM  installer afterwards, compile installer\SpaceMusicHub.iss with Inno Setup 6.
 REM ===========================================================================
 
 echo.
-echo === Building SpaceMusicHub.exe ===
+echo === Building Space Music Hub (GUI) ===
 echo.
 
-python -m PyInstaller ^
-    --onefile ^
-    --name SpaceMusicHub ^
-    --console ^
-    --collect-all yt_dlp ^
-    --collect-all telegram ^
-    --collect-all dotenv ^
-    --noconfirm ^
-    telegram_bot_music_youtube.py
+python -m PyInstaller --noconfirm SpaceMusicHubGUI.spec
 
 echo.
-if exist "dist\SpaceMusicHub.exe" (
+if exist "dist\SpaceMusicHub\SpaceMusicHub.exe" (
     echo === DONE ===
-    echo Executable: dist\SpaceMusicHub.exe
+    echo App: dist\SpaceMusicHub\SpaceMusicHub.exe
 ) else (
     echo === BUILD FAILED — check the output above ===
 )

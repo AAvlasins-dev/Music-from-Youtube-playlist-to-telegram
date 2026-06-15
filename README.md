@@ -22,7 +22,7 @@ This repository shows the project's evolution from a simple script to a full des
 | [`v1-classic`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/tree/v1-classic) | **Classic** | The original Python script bot — `yt-dlp` + Telegram, run from the command line. Clean code, tests, CI, Docker. |
 | [`master`](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram) | **Desktop app** (this one) | The evolution — a polished **PyQt6 desktop app** (one Windows `.exe` + installer). Neon dashboard, a graphical 3-step setup wizard, background system-tray mode, a check scheduler, live progress, and a trilingual UI. No Python, no config files. |
 
-> The `master` edition grew out of `v1-classic`: **same proven engine** (the `v1-classic` bot is bundled and driven by the GUI), wrapped into a product anyone can install and use.
+> The `master` edition grew out of `v1-classic`: the **same engine lineage** — the bot is bundled and driven by the GUI, and was hardened in 2.0.0 (192 kbps pipeline, token-safe logs) — wrapped into a product anyone can install and use.
 
 ---
 
@@ -68,7 +68,7 @@ A **desktop app for Windows** that watches YouTube playlists, downloads every ne
 | 🔧 ffmpeg auto-discovery | Finds `ffmpeg` on PATH, beside the app, or via `ffmpeg-downloader` |
 | 🔗 / 📌 Link + auto-pin | Each post links back to YouTube; the latest track is auto-pinned (previous unpinned) |
 | 💾 State persistence | Posted videos tracked in JSON — never re-posts the same track; oversize (>50 MB) tracks are skipped, not retried forever |
-| 🔁 Retry logic | Retries failed downloads and Telegram API calls with exponential back-off |
+| 🔁 Retry logic | Retries failed downloads and Telegram API calls with automatic back-off (configurable attempts + delay) |
 | 🔒 Token-safe logs | The bot token is masked in logs and never leaks into the UI or `bot.log` |
 | 📋 Structured logging | Console + rotating `bot.log` (5 MB × 3 backups) |
 | 🐳 Docker-ready | The engine also ships with `Dockerfile` + `docker-compose.yml` for headless use |
@@ -105,8 +105,7 @@ GitHub Actions runners use **Microsoft Azure IP addresses**, which YouTube ident
 | What works on GitHub Actions | What does NOT work |
 |---|---|
 | ✅ Lint + unit tests (`ci.yml`) | ❌ Downloading audio from YouTube |
-| ✅ Scheduled trigger / workflow_dispatch | ❌ Sending MP3 files to Telegram |
-| ✅ Committing state files back to the repo | |
+| ✅ Manual run (`workflow_dispatch`) | ❌ Sending MP3 files to Telegram |
 
 **Recommended deployment for full functionality:** run the bot on any machine with a residential or non-datacenter IP — your own PC (Windows Task Scheduler / cron), a home server, or a VPS not hosted on Azure/AWS/GCP. The Docker and local Python options below work out of the box.
 
@@ -139,9 +138,10 @@ Pick an interval in the **schedule** panel (hourly / daily / weekly), tick **lau
 
 📖 **Full step-by-step guide (RU):** [INSTALL.md](INSTALL.md)
 
+<a id="-build-from-source"></a>
 **Build the desktop app from source:**
 ```cmd
-pip install -r requirements.txt pyinstaller
+pip install -r requirements-dev.txt
 pyinstaller --noconfirm SpaceMusicHubGUI.spec      :: -> dist\SpaceMusicHub\SpaceMusicHub.exe
 iscc installer\SpaceMusicHub.iss                   :: -> dist\SpaceMusicHub-Setup-vX.Y.Z.exe (needs Inno Setup 6)
 ```
@@ -195,10 +195,10 @@ Copy `.env.example` to `.env` and fill in the values:
 | Variable | Required | Description |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | ✅ | Bot token from [@BotFather](https://t.me/BotFather) |
-| `PLAYLIST_ANDREY` | ✅ | YouTube playlist ID for Andrey's channel |
-| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Telegram channel username **without** `@` (e.g. `my_channel`) |
-| `PLAYLIST_BAYBA` | ✅ | YouTube playlist ID for Bayba's channel |
-| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Telegram channel username **without** `@` |
+| `CHANNEL_1_TELEGRAM` | ✅ | Telegram channel username **without** `@` (e.g. `my_channel`) |
+| `CHANNEL_1_PLAYLIST` | ✅ | YouTube playlist ID (or full URL) for that channel |
+| `CHANNEL_1_NAME` | ➖ | Label used for the state-file names / logs |
+| `CHANNEL_2_*`, `CHANNEL_3_*`, … | ➖ | Add as many `channel ↔ playlist` pairs as you like (no code changes) |
 | `ADMIN_CHAT_ID` | ➖ | Your Telegram chat ID — receive a run summary after each execution |
 | `YOUTUBE_COOKIES_FILE` | ➖ | Path to Netscape cookies file — bypasses YouTube bot-detection on CI |
 | `RETRY_ATTEMPTS` | ➖ | Retry attempts on API errors (default: `3`) |
@@ -237,8 +237,8 @@ space-music-hub/
 ├── pyproject.toml                 # Ruff + pytest config
 ├── CHANGELOG.md                   # Version history
 ├── .github/workflows/
-│   ├── bot.yml                    # Scheduled engine runner (daily)
-│   └── ci.yml                     # Ruff lint + pytest on every push
+│   ├── bot.yml                    # Headless engine runner (manual dispatch)
+│   └── ci.yml                     # Ruff lint + pytest on every push & PR
 └── tests/
     ├── test_bot.py                # Engine unit tests
     └── test_gui.py                # GUI-layer unit tests (86 tests total)
@@ -300,19 +300,34 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ### ✨ Возможности
 
+**🖥️ Десктоп-приложение (PyQt6)**
+
 | Функция | Описание |
 |---|---|
-| 🎵 Скачивание и отправка MP3 | Скачивает аудио через `yt-dlp` + `ffmpeg`, отправляет как настоящий MP3-файл |
-| 🔧 Авто-поиск ffmpeg | Находит `ffmpeg` в PATH или через `ffmpeg-downloader` — ручная настройка не нужна |
-| 🔗 Ссылка на YouTube в подписи | Каждый пост содержит оригинальную ссылку на YouTube |
-| 📌 Автозакрепление | Открепляет предыдущее сообщение, автоматически закрепляет новое |
-| 💾 Сохранение состояния | Отслеживает опубликованные видео — никогда не постит трек повторно |
-| 🔁 Retry-логика | Повторяет неудачные загрузки и вызовы API с экспоненциальной задержкой |
-| 📋 Структурированные логи | Консоль + ротируемый файл `bot.log` (5 МБ × 3 копии) |
-| 🔔 Уведомления администратору | Опциональное итоговое сообщение в Telegram после каждого запуска |
-| 🐳 Docker-ready | `Dockerfile` + `docker-compose.yml` для развёртывания одной командой |
-| ⚙️ Полная настройка | Всё поведение управляется через переменные окружения |
-| 🪟 Windows-friendly | Корректно работает с кириллическими путями; `run_bot.bat` для Task Scheduler |
+| 🧙 Графический мастер настройки | 3 шага — вставить токен, добавить канал + плейлист, проверить и сохранить. Каждый канал можно **протестировать вживую** (бот публикует и удаляет проверочное сообщение). Пошаговые инструкции встроены. |
+| 📊 Живой дашборд | Watch / Run once / Check / Stop, **прогресс-бар** («трек 5 из 55»), счётчики (опубликовано / ошибки / запуски) и **цветной лог** с переключателем Simple/Expert |
+| ⏰ Планировщик проверок | Как часто перепроверять: каждый час / 2 часа / день / неделю, плюс галочка **автозапуска с Windows** |
+| 🔔 Фоновый режим в трее | При закрытии окно прячется в трей; бот продолжает работать и может стартовать скрытым при загрузке |
+| ➕ Добавление пар на лету | Ещё канал + плейлист прямо с дашборда — без повторного мастера |
+| 🌍 Интерфейс на 3 языках | English / Русский / Latviešu, переключается вживую; по умолчанию English |
+| 📦 Установщик одним файлом | Inno Setup `.exe` — установка для пользователя, ярлыки, чистое удаление. Python на целевом ПК не нужен |
+
+**🤖 Движок (встроенный бот)**
+
+| Функция | Описание |
+|---|---|
+| 🎵 Скачивание и отправка MP3 | Скачивает аудио через `yt-dlp` + `ffmpeg`, отправляет как настоящий MP3 192 kbps |
+| ⚡ Конвейер загрузки | Следующий трек качается, пока текущий загружается — на больших партиях ~30–40 % быстрее |
+| 🪫 Дружелюбен к фону | Работает с пониженным приоритетом — ПК остаётся отзывчивым |
+| ♾️ Сколько угодно каналов | Один токен → много пар `канал ↔ плейлист` |
+| 🔒 Single-instance lock | `bot.lock` не даёт двум запускам столкнуться и задвоить посты |
+| 🔧 Авто-поиск ffmpeg | Находит `ffmpeg` в PATH, рядом с приложением или через `ffmpeg-downloader` |
+| 🔗 / 📌 Ссылка + автозакрепление | Каждый пост ссылается на YouTube; последний трек автозакрепляется |
+| 💾 Сохранение состояния | Опубликованные видео в JSON — трек не постится повторно; >50 МБ пропускаются, не зависая в ретраях |
+| 🔁 Retry-логика | Повторяет неудачные загрузки и вызовы API с автоматической задержкой между попытками |
+| 🔒 Токен-безопасные логи | Токен маскируется в логах и не попадает в UI или `bot.log` |
+| 📋 Структурированные логи | Консоль + ротируемый `bot.log` (5 МБ × 3 копии) |
+| 🐳 Docker для движка | `Dockerfile` + `docker-compose.yml` для headless-запуска на сервере |
 
 ### ⚠️ Ограничение GitHub Actions
 
@@ -321,8 +336,7 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 | Что работает в GitHub Actions | Что НЕ работает |
 |---|---|
 | ✅ Линтер + юнит-тесты (`ci.yml`) | ❌ Скачивание аудио с YouTube |
-| ✅ Запуск по расписанию / вручную | ❌ Отправка MP3 в Telegram |
-| ✅ Коммит state-файлов обратно в репо | |
+| ✅ Ручной запуск (`workflow_dispatch`) | ❌ Отправка MP3 в Telegram |
 
 **Рекомендуемый способ для полного функционала:** запускай бота на любой машине с домашним или не дата-центровым IP — твой ПК (Windows Task Scheduler или cron), домашний сервер, или VPS не на Azure/AWS/GCP. Варианты Docker и локального Python ниже работают без ограничений.
 
@@ -332,7 +346,15 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ### 🚀 Быстрый старт
 
-#### Вариант 1 — Локальный Python + Windows Task Scheduler (рекомендуется)
+#### Вариант 0 — Готовое приложение для Windows (без Python и конфигов) ⭐
+
+Скачай **`SpaceMusicHub-Setup.exe`** со страницы [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) и запусти. Установщик ставит приложение, создаёт ярлыки и по желанию регистрирует автозапуск. При первом запуске **графический мастер из 3 шагов** проведёт настройку, дальше всем управляет дашборд (Watch / Run once / Check / Config) и планировщик в трее — переживает перезагрузки, постит новые треки сам.
+
+📖 **Подробный гайд:** [INSTALL.md](INSTALL.md)
+
+> Тот же встроенный движок работает и headless (`SpaceMusicHub.exe --bot-watch`), а классический скрипт (`python telegram_bot_music_youtube.py`) по-прежнему работает — см. варианты ниже.
+
+#### Вариант 1 — Локальный Python + Windows Task Scheduler
 
 ```bash
 git clone https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram.git
@@ -373,10 +395,10 @@ python telegram_bot_music_youtube.py
 | Переменная | Обязательна | Описание |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
-| `PLAYLIST_ANDREY` | ✅ | ID плейлиста YouTube для канала Андрея |
-| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Username Telegram-канала **без** `@` (например `my_channel`) |
-| `PLAYLIST_BAYBA` | ✅ | ID плейлиста YouTube для канала Байбы |
-| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Username Telegram-канала **без** `@` |
+| `CHANNEL_1_TELEGRAM` | ✅ | Username Telegram-канала **без** `@` (например `my_channel`) |
+| `CHANNEL_1_PLAYLIST` | ✅ | ID плейлиста YouTube (или полная ссылка) для этого канала |
+| `CHANNEL_1_NAME` | ➖ | Метка для имён state-файлов и логов |
+| `CHANNEL_2_*`, `CHANNEL_3_*`, … | ➖ | Добавляй сколько угодно пар `канал ↔ плейлист` (без правки кода) |
 | `ADMIN_CHAT_ID` | ➖ | Твой Telegram chat ID — получай итог после каждого запуска |
 | `YOUTUBE_COOKIES_FILE` | ➖ | Путь к файлу cookies — обходит блокировку YouTube на CI |
 | `RETRY_ATTEMPTS` | ➖ | Количество попыток при ошибках API (по умолчанию: `3`) |
@@ -425,17 +447,19 @@ Seko YouTube atskaņošanas sarakstiem, lejupielādē katru jaunu dziesmu kā MP
 
 > 🟢 **Darbojas produkcijā** — pašlaik spoguļo 1 000+ dziesmas kanālos [@music_ebat_2026](https://t.me/music_ebat_2026) un [@baiba_music](https://t.me/baiba_music).
 
+> 🖥️ **PyQt6 lietotne:** neona panelis, iestatīšanas vednis ar pogu “Test channel”, fona režīms sistēmas teknē, pārbaužu plānotājs (stundā / dienā / nedēļā), automātiska palaišana ar Windows un saskarne 3 valodās (EN / RU / LV). Viens `.exe` instalators — Python mērķa datorā nav vajadzīgs.
+
 ### ✨ Iespējas
 
 | Funkcija | Apraksts |
 |---|---|
-| 🎵 MP3 lejupielāde un sūtīšana | Lejupielādē audio ar `yt-dlp` + `ffmpeg`, sūta kā īstu MP3 |
-| 🔗 YouTube saite parakstā | Katrs ieraksts satur oriģinālo YouTube saiti |
-| 📌 Automātiska piespraušana | Atsprauž iepriekšējo, piesprauž jaunāko ziņojumu |
+| 🖥️ Darbvirsmas lietotne (PyQt6) | Grafisks 3 soļu vednis, dzīvs panelis (Watch / Run once / Check), pārbaužu plānotājs un fona režīms sistēmas teknē |
+| 🎵 MP3 lejupielāde un sūtīšana | Lejupielādē audio ar `yt-dlp` + `ffmpeg`, sūta kā īstu MP3 192 kbps |
+| 🔗 / 📌 Saite + piespraušana | Katrs ieraksts satur YouTube saiti; jaunākais tiek automātiski piesprausts |
 | 💾 Stāvokļa saglabāšana | Izseko publicētos videoklipus — nekad neatkārto ierakstu |
-| 🔁 Atkārtošanas loģika | Eksponenciāla aizkave neveiksmīgiem izsaukumiem |
-| 🔔 Administratora paziņojumi | Kopsavilkuma ziņojums Telegram pēc katras izpildes |
-| ☁️ Bezmaksas hostings | GitHub Actions grafiks — nulles infrastruktūras izmaksas |
+| 🔁 Atkārtošanas loģika | Automātiska aizkave neveiksmīgām lejupielādēm un API izsaukumiem |
+| 🔒 Marķiera drošība | Bota marķieris tiek maskēts žurnālos un nenoplūst saskarnē |
+| 🌍 Saskarne 3 valodās | English / Русский / Latviešu, pārslēdzama dzīvi |
 
 ### ⚠️ GitHub Actions ierobežojums
 
@@ -444,13 +468,17 @@ GitHub Actions izmanto **Microsoft Azure** serverus, kuru IP adreses YouTube atp
 | Darbojas GitHub Actions | NEDARBOJAS |
 |---|---|
 | ✅ Lint + testi (`ci.yml`) | ❌ Audio lejupielāde no YouTube |
-| ✅ Ieplānotā izpilde | ❌ MP3 sūtīšana uz Telegram |
+| ✅ Manuāla palaišana (`workflow_dispatch`) | ❌ MP3 sūtīšana uz Telegram |
 
 **Ieteicamā izvietošana pilnai funkcionalitātei:** palaid botu jebkurā mašīnā ar mājas vai ne-datu-centra IP — savs dators, mājas serveris vai VPS ārpus Azure/AWS/GCP.
 
 ---
 
 ### 🚀 Ātrā palaišana
+
+**Variants 0 — gatava Windows lietotne (bez Python) ⭐:** lejupielādē **`SpaceMusicHub-Setup.exe`** no [**Releases**](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases/latest) un palaid — grafiskais 3 soļu vednis visu iestata, pēc tam viss notiek panelī un sistēmas teknē. Sīkāk: [INSTALL.md](INSTALL.md).
+
+**Izstrādātājiem (Python):**
 
 ```bash
 git clone https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram.git
@@ -466,10 +494,10 @@ python telegram_bot_music_youtube.py
 | Mainīgais | Nepieciešams | Apraksts |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | ✅ | Bota marķieris no [@BotFather](https://t.me/BotFather) |
-| `PLAYLIST_ANDREY` | ✅ | YouTube atskaņošanas saraksta ID |
-| `TELEGRAM_CHANNEL_ANDREY` | ✅ | Telegram kanāla lietotājvārds **bez** `@` |
-| `PLAYLIST_BAYBA` | ✅ | YouTube atskaņošanas saraksta ID |
-| `TELEGRAM_CHANNEL_BAYBA` | ✅ | Telegram kanāla lietotājvārds **bez** `@` |
+| `CHANNEL_1_TELEGRAM` | ✅ | Telegram kanāla lietotājvārds **bez** `@` |
+| `CHANNEL_1_PLAYLIST` | ✅ | YouTube atskaņošanas saraksta ID (vai pilna saite) |
+| `CHANNEL_1_NAME` | ➖ | Etiķete stāvokļa failu nosaukumiem / žurnāliem |
+| `CHANNEL_2_*`, `CHANNEL_3_*`, … | ➖ | Pievieno tik `kanāls ↔ saraksts` pāru, cik vēlies |
 | `ADMIN_CHAT_ID` | ➖ | Tavs Telegram chat ID kopsavilkuma paziņojumiem |
 
 ### 📝 Licence

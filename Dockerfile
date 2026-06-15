@@ -1,3 +1,11 @@
+# ===========================================================================
+#  Headless engine image (advanced / server use).
+#
+#  The product is the Windows desktop app (gui_app.py) — see README. This
+#  image runs ONLY the bundled YouTube -> Telegram engine
+#  (telegram_bot_music_youtube.py) headless on a server; it does not include
+#  the PyQt6 GUI. Configure it with CHANNEL_N_* env vars (see .env.example).
+# ===========================================================================
 FROM python:3.12-slim
 
 WORKDIR /app
