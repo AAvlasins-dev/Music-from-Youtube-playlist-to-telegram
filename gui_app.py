@@ -2245,8 +2245,7 @@ class MainWindow(QMainWindow):
         self._restyle_lang_btns()
         self._wizard.retranslate()
         self._dashboard.retranslate()
-        if self._tray:
-            self._build_tray_menu()
+        self._retranslate_tray()
 
     # ── page stack ────────────────────────────────────────────────────
     def _setup_pages(self) -> None:
@@ -2308,8 +2307,10 @@ class MainWindow(QMainWindow):
     def _build_tray_menu(self) -> None:
         if not self._tray:
             return
-        menu = QMenu()
-        # Style the tray menu to match the app instead of the bare OS one.
+        # Parent the menu to the window so Qt owns it (never GC'd), and build
+        # it ONCE. Language changes just retranslate the existing actions —
+        # no rebuild, no garbage-collection races, no leak.
+        menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
                 background-color: #0a0d16;
@@ -2337,22 +2338,34 @@ class MainWindow(QMainWindow):
                 margin: 5px 10px;
             }}
         """)
-        act_show  = QAction(tr("tray.open"),  self)
-        act_watch = QAction(tr("tray.watch"), self)
-        act_stop  = QAction(tr("tray.stop"),  self)
-        act_quit  = QAction(tr("tray.quit"),  self)
-        act_show.triggered.connect(self._show_from_tray)
-        act_watch.triggered.connect(lambda: self._dashboard._start("watch"))
-        act_stop.triggered.connect(self._dashboard._stop)
-        act_quit.triggered.connect(self._quit_for_real)
-        menu.addAction(act_show)
+        self._act_show  = QAction(self)
+        self._act_watch = QAction(self)
+        self._act_stop  = QAction(self)
+        self._act_quit  = QAction(self)
+        self._act_show.triggered.connect(self._show_from_tray)
+        self._act_watch.triggered.connect(lambda: self._dashboard._start("watch"))
+        self._act_stop.triggered.connect(self._dashboard._stop)
+        self._act_quit.triggered.connect(self._quit_for_real)
+        menu.addAction(self._act_show)
         menu.addSeparator()
-        menu.addAction(act_watch)
-        menu.addAction(act_stop)
+        menu.addAction(self._act_watch)
+        menu.addAction(self._act_stop)
         menu.addSeparator()
-        menu.addAction(act_quit)
+        menu.addAction(self._act_quit)
         self._tray.setContextMenu(menu)
-        self._tray_menu = menu  # keep a ref so it isn't garbage-collected
+        self._tray_menu = menu
+        self._retranslate_tray()
+
+    def _retranslate_tray(self) -> None:
+        """Refresh the tray menu labels for the current language."""
+        if not getattr(self, "_act_show", None):
+            return
+        self._act_show.setText(tr("tray.open"))
+        self._act_watch.setText(tr("tray.watch"))
+        self._act_stop.setText(tr("tray.stop"))
+        self._act_quit.setText(tr("tray.quit"))
+        if self._tray:
+            self._tray.setToolTip("Space Music Hub")
 
     def _on_tray_activated(self, reason) -> None:
         # Double-click on the tray icon → toggle window
