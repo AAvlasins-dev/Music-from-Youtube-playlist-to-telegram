@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+Repository quality pass — code, docs and CI hardening (no change to the
+shipped v2.0.0 installer).
+
+### Added
+- `LICENSE` (MIT) — the README advertised MIT but the file was missing.
+- CI now also runs on **windows-latest** (the real target OS), in addition
+  to Linux, on every push and PR.
+- Tests for the GUI **self-dispatcher** (`--bot-*` → engine entry points)
+  and for the token-mask filter's lazy `%`-args path. Suite: **86 → 94**.
+
+### Changed
+- Engine hardened: `DOWNLOAD_DIR` cleanup no longer blanket-wipes the folder
+  (only the bot's own artefacts); `save_json` writes atomically and
+  `load_json` survives a corrupt state file; the single-instance lock is now
+  atomic (`O_CREAT|O_EXCL`) and reclaims a stale lock whose owner PID is gone;
+  colliding channel names get separate state files.
+- GUI writes the bare channel handle (no `@`) to `.env`, matching the engine.
+- Docs realigned with the desktop app: `INSTALL.md`/`CONTRIBUTING.md` rewritten,
+  RU/LV README brought to parity with EN, config tables switched to the
+  `CHANNEL_N_*` format, `build_exe.bat` now builds the GUI via the spec.
+- `bot.yml` is **manual-dispatch only** (the daily schedule with real cookies
+  on a public repo was removed).
+- `PyQt6` declared in `pyproject.toml` dependencies.
+
+### Removed
+- 8.6 MB autoplaying `bg.mp4` and an orphan 7.1 MB `song.mp3` from the site
+  (the background is now the 156 KB `bg.jpg` that was shipped but never wired).
+
+---
+
 ## [2.0.0] — 2026-06-15 — Desktop App 🖥️
 
 The project graduates from a console tool to a **standalone PyQt6 desktop
