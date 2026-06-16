@@ -2,14 +2,14 @@
 
 > 🧬 **From a Python script to a desktop app** — what began as a command-line `v1-classic` bot grew into a one-click Windows `.exe` with a neon GUI, the same proven engine inside.
 
-[![Run Music Bot](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/bot.yml)
 [![CI](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml/badge.svg)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-101%20passing-brightgreen?logo=pytest&logoColor=white)
 ![Status](https://img.shields.io/badge/status-production%20live-brightgreen)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-website-ef6a33?logo=github)](https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/)
 [![Windows .exe](https://img.shields.io/badge/Windows-.exe%20release-0078D6?logo=windows)](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![python-telegram-bot](https://img.shields.io/badge/python--telegram--bot-21.6-blue?logo=telegram)
-![yt-dlp](https://img.shields.io/badge/yt--dlp-2026.3-red?logo=youtube)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-latest-red?logo=youtube)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -43,6 +43,13 @@ A **desktop app for Windows** that watches YouTube playlists, downloads every ne
 > 🟢 **Live in production** — currently mirroring 1 000+ tracks to [@music_ebat_2026](https://t.me/music_ebat_2026) and [@baiba_music](https://t.me/baiba_music).
 
 🌐 **See it in action:** [live presentation site](https://aavlasins-dev.github.io/Music-from-Youtube-playlist-to-telegram/) · ⬇️ **Get it:** [Releases](https://github.com/AAvlasins-dev/Music-from-Youtube-playlist-to-telegram/releases)
+
+<p align="center">
+  <img src="docs/shot-wizard.png" alt="Setup wizard — create your Telegram bot, add a channel + playlist, test it live" width="500">
+  <img src="docs/shot-dashboard.png" alt="Dashboard — Watch / Run once / Check, schedule and a live activity log" width="330">
+</p>
+
+<p align="center"><sub>The 3-step setup wizard (left) and the live dashboard (right).</sub></p>
 
 ### ✨ Features
 
@@ -244,7 +251,7 @@ space-music-hub/
 │   └── ci.yml                      # ruff + pytest on Linux & Windows, push & PR
 └── tests/
     ├── test_bot.py                 # engine unit tests
-    └── test_gui.py                 # GUI-layer unit tests (97 total)
+    └── test_gui.py                 # GUI-layer unit tests (101 total)
 ```
 
 ### 🧪 Testing
@@ -252,10 +259,10 @@ space-music-hub/
 ```bash
 pip install -r requirements-dev.txt
 ruff check .                       # lint
-pytest -q                          # 97 unit tests
+pytest -q                          # 101 unit tests
 ```
 
-**97 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on Linux **and** Windows for every push & PR, plus `ruff` linting:
+**101 unit tests** (pytest), green in [CI](.github/workflows/ci.yml) on Linux **and** Windows for every push & PR, plus `ruff` linting:
 
 | Area | What's covered |
 |---|---|
@@ -331,6 +338,31 @@ private channels). Full text: [DISCLAIMER.md](DISCLAIMER.md).
 | 🔒 Токен-безопасные логи | Токен маскируется в логах и не попадает в UI или `bot.log` |
 | 📋 Структурированные логи | Консоль + ротируемый `bot.log` (5 МБ × 3 копии) |
 | 🐳 Docker для движка | `Dockerfile` + `docker-compose.yml` для headless-запуска на сервере |
+
+### 🏗 Архитектура
+
+**Приложение ↔ движок.** Собранный `.exe` — это PyQt6 GUI. При нажатии *Watch* / *Run once* / *Check* GUI **перезапускает сам себя** с флагом `--bot-watch` / `--bot-once` / `--bot-check`. Диспетчер в начале `gui_app.py` видит флаг и запускает встроенный движок вместо окна, стримя его stdout в лог дашборда. Один бинарь — две роли: отдельный Python не нужен, а падение бота не роняет UI.
+
+```mermaid
+flowchart LR
+    subgraph APP["🖥️ SpaceMusicHub.exe (PyQt6 GUI)"]
+        UI[Dashboard / Wizard / Tray]
+    end
+    UI -- "subprocess: self.exe --bot-watch" --> ENG
+    subgraph ENG["🤖 Bundled engine (same .exe, --bot-* mode)"]
+        B[📋 Fetch playlist] --> C{New videos?}
+        C -- No --> Z([✅ Nothing to post])
+        C -- Yes --> D[🔍 Filter already-sent]
+        D --> E[⬇️ Download + transcode\nyt-dlp + ffmpeg → MP3]
+        E --> F[📤 Send to Telegram]
+        F --> G[📌 Pin latest / unpin previous]
+        G --> H[💾 Persist state JSON]
+        H --> E
+    end
+    ENG -- "stdout (progress, log)" --> UI
+    YT[(🎬 YouTube)] --> E
+    F --> TG[(📣 Telegram Channel)]
+```
 
 ### ⚠️ Ограничение GitHub Actions
 
@@ -509,14 +541,35 @@ python telegram_bot_music_youtube.py
 
 Iebūvētais `.exe` ir GUI. Nospiežot Watch / Run once / Check, tas **pārstartē sevi** ar karogu `--bot-watch` / `--bot-once` / `--bot-check`; dispečers `gui_app.py` sākumā palaiž iebūvēto dzinēju saskarnes vietā un straumē izvadi atpakaļ uz paneļa žurnālu. Viens binārs, divas lomas — dzinēja avārija nenogāž lietotni.
 
+```mermaid
+flowchart LR
+    subgraph APP["🖥️ SpaceMusicHub.exe (PyQt6 GUI)"]
+        UI[Dashboard / Wizard / Tray]
+    end
+    UI -- "subprocess: self.exe --bot-watch" --> ENG
+    subgraph ENG["🤖 Bundled engine (same .exe, --bot-* mode)"]
+        B[📋 Fetch playlist] --> C{New videos?}
+        C -- No --> Z([✅ Nothing to post])
+        C -- Yes --> D[🔍 Filter already-sent]
+        D --> E[⬇️ Download + transcode\nyt-dlp + ffmpeg → MP3]
+        E --> F[📤 Send to Telegram]
+        F --> G[📌 Pin latest / unpin previous]
+        G --> H[💾 Persist state JSON]
+        H --> E
+    end
+    ENG -- "stdout (progress, log)" --> UI
+    YT[(🎬 YouTube)] --> E
+    F --> TG[(📣 Telegram Channel)]
+```
+
 ### 🧪 Testēšana
 
-**97 vienības testi** (pytest), zaļi [CI](.github/workflows/ci.yml) uz Linux un Windows katram push un PR, plus `ruff` linteris.
+**101 vienības tests** (pytest), zaļi [CI](.github/workflows/ci.yml) uz Linux un Windows katram push un PR, plus `ruff` linteris.
 
 ```bash
 pip install -r requirements-dev.txt
 ruff check .
-QT_QPA_PLATFORM=offscreen pytest -q       # 97 testi
+QT_QPA_PLATFORM=offscreen pytest -q       # 101 tests
 ```
 
 ### 📝 Licence

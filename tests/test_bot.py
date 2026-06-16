@@ -472,6 +472,9 @@ class _FakeBot:
     async def unpin_chat_message(self, chat_id, message_id):
         self.unpinned.append(message_id)
 
+    async def get_me(self):
+        return SimpleNamespace(username="testbot", first_name="Test")
+
     async def shutdown(self):
         self.shut_down = True
 
@@ -722,3 +725,56 @@ class TestSingleInstanceLock:
         monkeypatch.setattr(bot, "_pid_alive", lambda pid: True)
         assert bot._acquire_lock(lock) is False    # owner alive → refuse
         os.remove(lock)
+
+
+# --------------------------------------------------------------------------- #
+# check() — dry run: counts new tracks, posts nothing
+# --------------------------------------------------------------------------- #
+class TestCheck:
+    def test_counts_without_posting(self, tmp_path, monkeypatch):
+        videos = [{"id": "a", "title": "A"}, {"id": "b", "title": "B"}]
+        fake_bot = _FakeBot()
+        monkeypatch.setattr(bot, "Bot", lambda *a, **k: fake_bot)
+        monkeypatch.setattr(bot, "_validate_config", lambda: None)
+        monkeypatch.setattr(bot, "_get_playlist_videos", lambda pid: videos)
+        channel = _make_channel(tmp_path)
+        monkeypatch.setattr(bot, "CHANNELS", [channel])
+        bot.save_json(channel.sent_videos_file, {"a": {"title": "A"}})  # 1 already sent
+
+        asyncio.run(bot.check())
+
+        # Dry run — nothing is sent or pinned, regardless of the 1 new track
+        assert fake_bot.sent_audios == []
+        assert fake_bot.pinned == []
+
+
+# --------------------------------------------------------------------------- #
+# watch() — runs one cycle then sleeps; we break out of the infinite loop
+# --------------------------------------------------------------------------- #
+class TestWatch:
+    def test_one_cycle_then_sleeps_and_closes_bot(self, tmp_path, monkeypatch):
+        calls: list[str] = []
+
+        async def fake_post(channel, tg_bot=None):
+            calls.append(channel.name)
+            return bot.RunResult(channel=channel.name, posted=1, failed=0, total_new=1)
+
+        fake_bot = _FakeBot()
+        monkeypatch.setattr(bot, "Bot", lambda *a, **k: fake_bot)
+        monkeypatch.setattr(bot, "_validate_config", lambda: None)
+        monkeypatch.setattr(bot, "post_new_videos", fake_post)
+        monkeypatch.setattr(bot, "CHANNELS", [_make_channel(tmp_path, name="c1")])
+
+        class _Stop(Exception):
+            pass
+
+        async def fake_sleep(_seconds):
+            raise _Stop  # break out after the first cycle's sleep
+
+        monkeypatch.setattr(bot.asyncio, "sleep", fake_sleep)
+
+        with pytest.raises(_Stop):
+            asyncio.run(bot.watch())
+
+        assert calls == ["c1"]              # exactly one cycle ran
+        assert fake_bot.shut_down is True   # the shared Bot is closed in finally

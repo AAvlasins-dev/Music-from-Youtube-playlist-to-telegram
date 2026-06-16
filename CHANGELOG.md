@@ -15,9 +15,11 @@ shipped v2.0.0 installer).
 - `LICENSE` (MIT) — the README advertised MIT but the file was missing.
 - CI now also runs on **windows-latest** (the real target OS), in addition
   to Linux, on every push and PR.
-- Tests for the GUI **self-dispatcher** (`--bot-*` → engine entry points)
-  the token-mask filter's lazy `%`-args path, and the single-instance lock.
-  Suite: **86 → 97**.
+- Tests for the GUI **self-dispatcher** (`--bot-*` → engine entry points), the
+  token-mask `%`-args path, the single-instance lock, `check()`, one `watch()`
+  cycle, and the launch-at-startup toggle. Suite: **86 → 101**.
+- `SECURITY.md` (private vulnerability reporting + secret-handling notes).
+- README and the site now show the **setup wizard + dashboard** screenshots.
 
 ### Changed
 - Engine hardened: `DOWNLOAD_DIR` cleanup no longer blanket-wipes the folder

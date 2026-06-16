@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import sys
 
 import pytest
 
@@ -167,3 +168,56 @@ class TestBotDispatcher:
 
     def test_run_bot_mode_unknown_returns_1(self):
         assert gui._run_bot_mode("nonsense") == 1
+
+
+# --------------------------------------------------------------------------- #
+# Launch-at-startup toggle — HKCU Run key (winreg), mocked so no real registry
+# --------------------------------------------------------------------------- #
+class _FakeWinreg:
+    """Minimal in-memory stand-in for the winreg module's Run-key surface."""
+    HKEY_CURRENT_USER = "HKCU"
+    KEY_SET_VALUE = 2
+    REG_SZ = 1
+
+    def __init__(self):
+        self.values: dict[str, str] = {}
+
+    class _Key:
+        def __init__(self, reg):
+            self._reg = reg
+        def __enter__(self):
+            return self
+        def __exit__(self, *exc):
+            return False
+
+    def OpenKey(self, root, path, reserved=0, access=0):
+        return self._Key(self)
+
+    def SetValueEx(self, key, name, reserved, typ, value):
+        key._reg.values[name] = value
+
+    def QueryValueEx(self, key, name):
+        if name not in key._reg.values:
+            raise FileNotFoundError(name)
+        return (key._reg.values[name], self.REG_SZ)
+
+    def DeleteValue(self, key, name):
+        if name not in key._reg.values:
+            raise FileNotFoundError(name)
+        del key._reg.values[name]
+
+
+class TestAutostart:
+    def test_noop_off_windows(self, monkeypatch):
+        monkeypatch.setattr(gui.sys, "platform", "linux")
+        assert gui.set_autostart(True) is False
+        assert gui.autostart_enabled() is False
+
+    def test_registry_roundtrip(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "winreg", _FakeWinreg())
+        monkeypatch.setattr(gui.sys, "platform", "win32")
+        assert gui.autostart_enabled() is False    # nothing registered yet
+        assert gui.set_autostart(True) is True
+        assert gui.autostart_enabled() is True      # now in the Run key
+        assert gui.set_autostart(False) is False
+        assert gui.autostart_enabled() is False      # removed again
