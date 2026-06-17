@@ -76,6 +76,10 @@ card_final.png
 # Internal AI-session handoff note — kept locally, not for the public repo
 HANDOFF.md
 
+# Rendered social-preview banner — derived from social-preview.svg; the live
+# copy is uploaded in the repo's GitHub settings, so the PNG isn't tracked.
+docs/social-preview.png
+
 # Runtime artifact: the GUI writes the selected UI language here (install dir)
 lang.txt
 
